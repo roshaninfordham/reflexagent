@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import BriefActions from '../../../components/BriefActions';
+import ChemistryPanel from '../../../components/ChemistryPanel';
 import MoleculePreview from '../../../components/MoleculePreview';
 import Narrator from '../../../components/Narrator';
 import { api } from '../../../lib/api';
@@ -110,6 +111,10 @@ export default function BriefPage({ params }: { params: { id: string } }) {
           <>
             <Section title="Recalled drug · target">
               <MoleculePreview drugName={b.drug_name} />
+            </Section>
+
+            <Section title="Chemistry intelligence">
+              <ChemistryPanel drugName={b.drug_name} />
             </Section>
 
             <Section title="Summary">

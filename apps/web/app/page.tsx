@@ -47,6 +47,7 @@ export default function HomePage() {
         </div>
         <nav className="flex items-center gap-3 text-sm">
           <Link href="/ops" className="text-ice hover:text-teal-glow hidden sm:inline">Ops</Link>
+          <Link href="/historical" className="text-ice hover:text-teal-glow hidden md:inline">Historical</Link>
           <Link href="/premium" className="text-ice hover:text-teal-glow hidden sm:inline">Premium</Link>
           <Link href="/pricing" className="text-ice hover:text-teal-glow hidden sm:inline">Pricing</Link>
           <a href="/docs/pitch/deck.html" target="_blank" className="text-ice hover:text-teal-glow hidden md:inline">Deck</a>

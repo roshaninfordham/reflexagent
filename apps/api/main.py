@@ -320,6 +320,122 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
     }
 
 
+# ----- Chemistry intelligence -----
+
+
+@app.get("/api/v1/chemistry/{name}")
+async def chemistry_dossier(name: str):
+    """Real-time molecule dossier: PubChem lookup + RDKit-computed descriptors +
+    RDKit-generated SVG (works even for novel compounds not in PubChem)."""
+    from apps.api import chemistry as chem
+    return await chem.full_dossier(name)
+
+
+# ----- Historical recalls (real openFDA + curated outcomes) -----
+
+
+@app.get("/api/v1/historical/recalls")
+async def historical_list():
+    from apps.api import historical as hist
+    return {"items": hist.list_recalls()}
+
+
+@app.get("/api/v1/historical/recalls/{slug}")
+async def historical_detail(slug: str):
+    from apps.api import historical as hist
+    r = hist.get_recall(slug)
+    if not r:
+        raise HTTPException(404, "not found")
+    # Live evidence pull
+    live = await hist.fetch_openfda_evidence(r["search"])
+    out = {k: v for k, v in r.items() if k != "search"}
+    out["openfda_live_records"] = live[:3]
+    return out
+
+
+@app.post("/api/v1/historical/replay/{slug}")
+async def historical_replay(slug: str):
+    """Replay a famous historical recall through Reflex's 11-agent swarm."""
+    from apps.api import historical as hist
+    r = hist.get_recall(slug)
+    if not r:
+        raise HTTPException(404, "not found")
+    # Pull a live openFDA record to populate the payload realistically
+    live = await hist.fetch_openfda_evidence(r["search"])
+    sample = (live or [{}])[0]
+    cls_raw = (sample.get("classification") or "").lower()
+    cls = "II"
+    if "class i" in cls_raw and "class ii" not in cls_raw: cls = "I"
+    elif "class iii" in cls_raw: cls = "III"
+
+    payload = TriggerPayload(
+        drug_name=r["drug"],
+        manufacturer=sample.get("recalling_firm", f"Multiple manufacturers ({r['year']})"),
+        ndc=(sample.get("openfda") or {}).get("product_ndc", [None])[0],
+        lot_numbers=[ln.strip() for ln in (sample.get("code_info") or "").split(",") if ln.strip()][:3],
+        recall_class=cls,
+        reason=(sample.get("reason_for_recall") or r["story"])[:480],
+        source="manual",
+        external_id=f"historical-{slug}",
+        confidence=0.96,
+    )
+    asyncio.create_task(orchestrate(payload))
+    for _ in range(60):
+        await asyncio.sleep(0.05)
+        for w in list_recent(20):
+            if w.payload is payload:
+                return {"workflow_id": str(w.workflow_id), "slug": slug}
+    return {"workflow_id": None, "slug": slug}
+
+
+@app.get("/api/v1/historical/compare/{slug}/{workflow_id}")
+async def historical_compare(slug: str, workflow_id: UUID):
+    """Side-by-side: what Reflex recommends vs what actually happened."""
+    from apps.api import historical as hist
+    r = hist.get_recall(slug)
+    if not r:
+        raise HTTPException(404, "recall not found")
+    w = get_result(workflow_id)
+    if not w:
+        raise HTTPException(404, "workflow not found")
+    reflex_block = {
+        "triage_class": w.triage.severity if w.triage else None,
+        "triage_urgency": w.triage.urgency if w.triage else None,
+        "severity_score": w.triage.severity_score if w.triage else None,
+        "cohort_count": w.cohort.patient_count if w.cohort else 0,
+        "cohort_high_risk": w.cohort.high_risk_count if w.cohort else 0,
+        "verification_verdict": w.verification.verdict if w.verification else None,
+        "conflict_summary": (w.verification.conflict_summary if w.verification else None),
+        "counter_evidence_count": len(w.verification.counter_evidence) if w.verification else 0,
+        "substitutes": [
+            {
+                "drug": c.drug_name,
+                "target": c.target_protein,
+                "similarity": c.target_similarity,
+            }
+            for c in (w.substitutes.candidates if w.substitutes else [])
+        ],
+        "brief_title": w.brief.title if w.brief else None,
+        "brief_recommendation": w.brief.recommendation if w.brief else None,
+        "published_url": w.published.cited_md_url if w.published else None,
+    }
+    historical_block = {
+        "drug": r["drug"],
+        "year": r["year"],
+        "story": r["story"],
+        "actual_action": r["actual_action"],
+        "scope": r["scope"],
+        "lessons": r["lessons"],
+        "sources": r["sources"],
+    }
+    return {
+        "slug": slug,
+        "workflow_id": str(workflow_id),
+        "reflex": reflex_block,
+        "historical": historical_block,
+    }
+
+
 # ----- One-click demo -----
 
 
