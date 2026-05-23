@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import ActivityFeed from '../../components/ActivityFeed';
 import AgentTheater from '../../components/AgentTheater';
+import LaunchDemo from '../../components/LaunchDemo';
 import MonitorStatus from '../../components/MonitorStatus';
 import RecentWorkflows from '../../components/RecentWorkflows';
+import ThemeToggle from '../../components/ThemeToggle';
 import VoiceAgent from '../../components/VoiceAgent';
 import WalletBadge from '../../components/WalletBadge';
 import { api } from '../../lib/api';
@@ -26,24 +29,41 @@ type WF = {
 const DD_DASHBOARD = 'https://app.datadoghq.com/llm/applications?query=ml_app%3Areflex';
 
 export default function OpsPage() {
+  return (
+    <Suspense fallback={<main className="grid-bg min-h-screen p-10 text-slate-light">loading…</main>}>
+      <OpsInner />
+    </Suspense>
+  );
+}
+
+function OpsInner() {
+  const params = useSearchParams();
+  const preferred = params.get('wf');
   const [active, setActive] = useState<WF | null>(null);
   const [stack, setStack] = useState<WF[]>([]);
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const xs = await api<WF[]>('/api/v1/workflows?limit=8');
+        const xs = await api<WF[]>('/api/v1/workflows?limit=12');
         if (!mounted) return;
         setStack(xs);
-        const running = xs.find((w) => w.status === 'running');
-        const completed = xs.find((w) => w.status === 'completed');
-        setActive((prev) => prev || running || completed || xs[0] || null);
+        // If a workflow was requested via ?wf= and it appears in recents, prefer it.
+        let pick = preferred ? xs.find((w) => w.workflow_id === preferred) : null;
+        if (!pick) pick = xs.find((w) => w.status === 'running') || null;
+        if (!pick) pick = xs.find((w) => w.status === 'completed') || null;
+        if (!pick) pick = xs[0] || null;
+        setActive((prev) => {
+          // Always swap to the preferred one if it just appeared, but otherwise keep stable.
+          if (preferred && pick && (!prev || prev.workflow_id !== preferred)) return pick;
+          return prev || pick;
+        });
       } catch {}
     };
     load();
     const i = setInterval(load, 2500);
     return () => { mounted = false; clearInterval(i); };
-  }, []);
+  }, [preferred]);
 
   return (
     <main className="grid-bg min-h-screen">
@@ -58,6 +78,8 @@ export default function OpsPage() {
           <a href={DD_DASHBOARD} target="_blank" className="btn text-xs py-1.5 px-3">
             Datadog LLM Obs ↗
           </a>
+          <ThemeToggle />
+          <LaunchDemo label="New demo workflow" className="text-xs py-1.5 px-3" />
           <Link href="/premium" className="btn btn-primary text-xs py-1.5 px-3">
             Pay $0.50 sub-brief
           </Link>

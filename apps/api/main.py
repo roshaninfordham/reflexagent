@@ -320,6 +320,25 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
     }
 
 
+# ----- One-click demo -----
+
+
+@app.post("/api/v1/demo/launch")
+async def demo_launch():
+    """Trigger a curated metformin recall workflow synchronously enough to return its id."""
+    from apps.api import demo as demo_mod
+    wf_id = await demo_mod.launch_curated_workflow()
+    return {"workflow_id": wf_id, "status": "running" if wf_id else "queued"}
+
+
+@app.get("/api/v1/demo/sample-recall.png")
+async def demo_sample_recall():
+    from apps.api import demo as demo_mod
+    from fastapi.responses import Response
+    data = demo_mod.generate_sample_recall_image()
+    return Response(content=data, media_type="image/png")
+
+
 # ----- Cost / pricing -----
 
 

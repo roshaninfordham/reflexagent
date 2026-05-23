@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import ActivityFeed from '../components/ActivityFeed';
+import LaunchDemo from '../components/LaunchDemo';
 import MonitorStatus from '../components/MonitorStatus';
 import RecentWorkflows from '../components/RecentWorkflows';
+import SampleRecallButton from '../components/SampleRecallButton';
 import ThemeToggle from '../components/ThemeToggle';
 import TriggerPanel from '../components/TriggerPanel';
 
@@ -48,7 +50,7 @@ export default function HomePage() {
           <a href="/docs/pitch/deck.html" target="_blank" className="text-ice hover:text-teal-glow hidden md:inline">Deck</a>
           <a href="https://github.com/roshaninfordham/reflexagent" target="_blank" className="text-slate-light hover:text-ice hidden sm:inline">GitHub</a>
           <ThemeToggle />
-          <Link href="/ops" className="btn btn-primary text-xs">Launch demo →</Link>
+          <LaunchDemo label="Launch demo →" className="text-xs" />
         </nav>
       </header>
 
@@ -64,7 +66,7 @@ export default function HomePage() {
           Drug recalls in the U.S. still run on faxes. Reflex watches the open web continuously. When a novel recall hits the wire, an 11-agent swarm verifies it across primary sources, runs an <strong className="text-ice">adversarial counter-evidence pass</strong>, identifies affected patients, drafts clinician communications, and ranks therapeutic alternatives using <strong className="text-ice">NVIDIA BioNeMo protein embeddings</strong> — in seconds.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <Link href="/ops" className="btn btn-primary">Launch live demo</Link>
+          <LaunchDemo label="Launch live demo" />
           <a href="/docs/pitch/deck.html" target="_blank" className="btn">View 3-min pitch deck</a>
           <Link href="/pricing" className="btn">See pricing & cost</Link>
           <a href="https://github.com/roshaninfordham/reflexagent" target="_blank" className="btn">Source on GitHub</a>
@@ -134,6 +136,7 @@ export default function HomePage() {
       <section className="px-6 md:px-10 py-10 max-w-6xl mx-auto grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           <TriggerPanel />
+          <SampleRecallButton />
         </div>
         <div className="space-y-5">
           <RecentWorkflows />
