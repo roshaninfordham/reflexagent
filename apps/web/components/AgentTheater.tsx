@@ -246,18 +246,19 @@ export default function AgentTheater({ workflowId }: { workflowId: string }) {
         <canvas ref={canvasRef} className="absolute inset-0" />
       </div>
 
-      {/* Right rail event log */}
-      <div className="absolute right-3 top-12 bottom-3 w-72 overflow-y-auto scrollbar-thin text-[11px] font-mono text-ice/80 px-3 py-2 rounded-md bg-ink/60 border border-teal/10 hidden lg:block">
-        {log.length === 0 && <div className="text-slate-light">No events yet…</div>}
-        {log.slice().reverse().map((row, i) => (
-          <div key={i} className="mb-1">
-            <span className={row.step === 'conflict' ? 'text-alert' : 'text-teal-glow'}>
-              {row.agent}
-            </span>{' '}
-            <span className="text-slate-light">{row.step}</span>
-            {row.label ? <div className="text-ice/70 pl-3">↳ {row.label}</div> : null}
-          </div>
-        ))}
+      {/* Compact event ticker across the bottom of the canvas */}
+      <div className="px-4 py-2 border-t border-teal/10 text-[11px] font-mono text-ice/80 flex items-center gap-3 overflow-x-auto scrollbar-thin">
+        <span className="text-slate-light shrink-0 uppercase tracking-widest">events</span>
+        {log.length === 0 ? (
+          <span className="text-slate-light italic">waiting for first event…</span>
+        ) : (
+          log.slice(-12).map((row, i) => (
+            <span key={i} className="shrink-0">
+              <span className={row.step === 'conflict' ? 'text-alert' : 'text-teal-glow'}>{row.agent}</span>
+              <span className="text-slate-light">·{row.step}</span>
+            </span>
+          ))
+        )}
       </div>
 
       {/* Conflict pop */}

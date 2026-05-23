@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 
 type Workflow = {
@@ -22,8 +22,8 @@ type Workflow = {
   published?: { cited_md_url: string; fallback: boolean } | null;
 };
 
-export default function BriefPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function BriefPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [wf, setWf] = useState<Workflow | null>(null);
 
   useEffect(() => {

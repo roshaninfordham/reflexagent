@@ -167,15 +167,16 @@ async def _loop() -> None:
     async with httpx.AsyncClient() as client:
         while _status.running:
             try:
-                items = await _poll_openfda(client)
+                # Drain injected signals FIRST so they take priority during demos.
+                injected: list[dict[str, Any]] = []
+                while not _inject_queue.empty():
+                    injected.append(await _inject_queue.get())
+
+                openfda_items = await _poll_openfda(client)
+                items = injected + openfda_items
                 _status.poll_count += 1
                 _status.last_poll_at = datetime.utcnow()
                 _status.signals_reviewed += len(items)
-
-                # Drain any injected demo signals.
-                while not _inject_queue.empty():
-                    inj = await _inject_queue.get()
-                    items.append(inj)
 
                 novel = []
                 for item in items:
@@ -184,7 +185,8 @@ async def _loop() -> None:
                         continue
                     novel.append(item)
 
-                for item in novel[:1]:  # one trigger per poll to keep stage pacing sane
+                # Process up to 2 novel signals per tick (covers any injected one + 1 organic).
+                for item in novel[:2]:
                     payload = _to_trigger(item)
                     _mark_seen(payload.external_id or "")
                     _status.novel_triggered += 1
@@ -202,7 +204,7 @@ async def _loop() -> None:
                     asyncio.create_task(orchestrate(payload))
 
                 # Mark remaining novel as seen so we don't reprocess them next tick.
-                for item in novel[1:]:
+                for item in novel[2:]:
                     rid = item.get("recall_number") or ""
                     if rid:
                         _mark_seen(rid)
