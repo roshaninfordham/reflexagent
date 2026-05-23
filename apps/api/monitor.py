@@ -91,6 +91,20 @@ async def _poll_openfda(client: httpx.AsyncClient, limit: int = 15) -> list[dict
         return []
 
 
+def _short_drug_name(item: dict[str, Any]) -> str:
+    """Pick the cleanest drug name from an OpenFDA record."""
+    openfda = item.get("openfda") or {}
+    # Prefer generic name (cleanest), then brand_name, then truncated description.
+    for key in ("generic_name", "brand_name", "substance_name"):
+        vals = openfda.get(key) or []
+        if vals:
+            return str(vals[0]).strip().title()[:80]
+    desc = item.get("product_description") or "Unknown"
+    # Take everything before the first comma — that's usually the actual product name.
+    head = desc.split(",", 1)[0]
+    return head.strip().title()[:80]
+
+
 def _to_trigger(item: dict[str, Any]) -> TriggerPayload:
     cls_raw = (item.get("classification") or "").lower()
     if "class i" in cls_raw and "class ii" not in cls_raw:
@@ -108,8 +122,8 @@ def _to_trigger(item: dict[str, Any]) -> TriggerPayload:
         if any(ch.isdigit() for ch in token) and any(ch.isalpha() for ch in token):
             lots.append(token.strip(".:;"))
     return TriggerPayload(
-        drug_name=(item.get("product_description") or item.get("openfda", {}).get("brand_name", [None])[0] or "Unknown")[:120],
-        ndc=(item.get("openfda", {}).get("product_ndc", [None])[0]),
+        drug_name=_short_drug_name(item),
+        ndc=((item.get("openfda") or {}).get("product_ndc") or [None])[0],
         lot_numbers=lots[:6],
         recall_class=cls,
         reason=(item.get("reason_for_recall") or "")[:500],
