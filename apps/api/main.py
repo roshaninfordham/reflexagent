@@ -394,12 +394,8 @@ async def cost_summary():
 
 @app.get("/api/v1/workflow/{workflow_id}/hotspots")
 async def workflow_hotspots(workflow_id: UUID):
-    """Aggregate the workflow's affected cohort by ZIP-3 with centroid coords.
-
-    Used by the frontend Leaflet heatmap. Pulls patient rows from ClickHouse
-    matching the workflow's drug + lots, groups by zip_3, joins to a static
-    centroid map (no external geocoding service required).
-    """
+    """Aggregate the workflow's affected cohort by ZIP-3 with centroid coords +
+    per-patient last_seen timestamps to support the temporal replay slider."""
     from apps.api import geo
     from apps.api.tools import clickhouse_client
     w = get_result(workflow_id)
@@ -412,8 +408,11 @@ async def workflow_hotspots(workflow_id: UUID):
         if lots:
             rows = clickhouse_client.query_rows(
                 """
-                SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients,
-                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk
+                SELECT CAST(zip_3 AS String) AS zip_3,
+                       count() AS patients,
+                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk,
+                       groupArray(toUnixTimestamp(last_seen)) AS seen_ts,
+                       groupArray(if(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions), 1, 0)) AS hr_flags
                 FROM patients
                 WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
                   AND hasAny(lots_dispensed, %(lots)s)
@@ -424,8 +423,11 @@ async def workflow_hotspots(workflow_id: UUID):
         else:
             rows = clickhouse_client.query_rows(
                 """
-                SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients,
-                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk
+                SELECT CAST(zip_3 AS String) AS zip_3,
+                       count() AS patients,
+                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk,
+                       groupArray(toUnixTimestamp(last_seen)) AS seen_ts,
+                       groupArray(if(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions), 1, 0)) AS hr_flags
                 FROM patients
                 WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
                 GROUP BY zip_3
@@ -436,9 +438,13 @@ async def workflow_hotspots(workflow_id: UUID):
         log.warning("hotspot SQL failed: %s", e)
         rows = []
     out = []
+    all_ts: list[int] = []
     for r in rows:
         z = str(r.get("zip_3") or "")
         lat, lng, label = geo.lookup(z)
+        seen = [int(t) for t in (r.get("seen_ts") or [])]
+        hr_flags = [int(f) for f in (r.get("hr_flags") or [])]
+        all_ts.extend(seen)
         out.append(
             {
                 "zip_3": z,
@@ -447,6 +453,9 @@ async def workflow_hotspots(workflow_id: UUID):
                 "label": label,
                 "patients": int(r.get("patients", 0)),
                 "high_risk": int(r.get("high_risk", 0)),
+                # Per-patient timestamps for client-side time filtering
+                "patient_ts": seen,
+                "patient_hr": hr_flags,
             }
         )
     return {
@@ -454,6 +463,87 @@ async def workflow_hotspots(workflow_id: UUID):
         "total_patients": sum(x["patients"] for x in out),
         "total_high_risk": sum(x["high_risk"] for x in out),
         "points": out,
+        "time_range": (
+            {"min": min(all_ts), "max": max(all_ts)} if all_ts else None
+        ),
+    }
+
+
+@app.get("/api/v1/hotspots/global")
+async def hotspots_global():
+    """All-completed-workflows aggregation. Each ZIP-3 gets a per-drug breakdown
+    + total patients. Powers the Ops-page multi-recall overlay."""
+    from apps.api import geo
+    from apps.api.tools import clickhouse_client
+    recents = list_recent(50)
+    workflows = [w for w in recents if w.normalized]
+    if not workflows:
+        return {"drugs": [], "zones": []}
+
+    # Per (drug, zip3) → patient count
+    per_zone: dict[str, dict[str, int]] = {}  # zip3 → {drug: count}
+    per_drug_total: dict[str, int] = {}
+
+    for w in workflows:
+        drug = w.normalized.normalized_drug
+        stem = drug.split()[0] if drug else ""
+        lots = w.normalized.lot_numbers or []
+        try:
+            if lots:
+                rows = clickhouse_client.query_rows(
+                    """
+                    SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients
+                    FROM patients
+                    WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
+                      AND hasAny(lots_dispensed, %(lots)s)
+                    GROUP BY zip_3
+                    """,
+                    {"stem": stem, "lots": lots},
+                )
+            else:
+                rows = clickhouse_client.query_rows(
+                    """
+                    SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients
+                    FROM patients
+                    WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
+                    GROUP BY zip_3
+                    """,
+                    {"stem": stem},
+                )
+        except Exception as e:  # noqa: BLE001
+            log.warning("global hotspot per-drug SQL failed: %s", e)
+            rows = []
+        for r in rows:
+            z = str(r.get("zip_3") or "")
+            cnt = int(r.get("patients", 0))
+            per_zone.setdefault(z, {})[drug] = per_zone.get(z, {}).get(drug, 0) + cnt
+            per_drug_total[drug] = per_drug_total.get(drug, 0) + cnt
+
+    drugs_ranked = sorted(per_drug_total.items(), key=lambda kv: kv[1], reverse=True)
+    drugs = [{"name": d, "total_patients": c} for d, c in drugs_ranked]
+
+    zones = []
+    for z, drug_counts in per_zone.items():
+        lat, lng, label = geo.lookup(z)
+        total = sum(drug_counts.values())
+        # Pick the dominant drug for this zone (drives the marker color)
+        dominant = max(drug_counts.items(), key=lambda kv: kv[1])[0]
+        zones.append(
+            {
+                "zip_3": z,
+                "lat": lat,
+                "lng": lng,
+                "label": label,
+                "total_patients": total,
+                "dominant_drug": dominant,
+                "drug_counts": drug_counts,
+            }
+        )
+    return {
+        "drugs": drugs,
+        "zones": zones,
+        "total_patients": sum(d["total_patients"] for d in drugs),
+        "workflow_count": len(workflows),
     }
 
 

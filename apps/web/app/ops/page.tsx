@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import ActivityFeed from '../../components/ActivityFeed';
 import AgentTheater from '../../components/AgentTheater';
+import GlobalHotspotMap from '../../components/GlobalHotspotMap';
 import LaunchDemo from '../../components/LaunchDemo';
 import MonitorStatus from '../../components/MonitorStatus';
 import RecentWorkflows from '../../components/RecentWorkflows';
@@ -123,6 +124,7 @@ function OpsInner() {
                 </div>
               </div>
               <AgentTheater workflowId={active.workflow_id} />
+              <GlobalHotspotMap />
               <VoiceAgent workflowId={active.workflow_id} />
             </>
           ) : (
