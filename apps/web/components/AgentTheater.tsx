@@ -11,7 +11,8 @@ const SOURCES: Node[] = [
   { id: 'fda', label: 'FDA', x: 0.18, y: 0.12, kind: 'source' },
   { id: 'ema', label: 'EMA', x: 0.82, y: 0.12, kind: 'source' },
   { id: 'pubmed', label: 'PubMed', x: 0.95, y: 0.5, kind: 'source' },
-  { id: 'clickhouse', label: 'ClickHouse', x: 0.5, y: 0.92, kind: 'source' },
+  { id: 'bionemo', label: 'BioNeMo · ESM2', x: 0.82, y: 0.88, kind: 'source' },
+  { id: 'clickhouse', label: 'ClickHouse', x: 0.5, y: 0.94, kind: 'source' },
   { id: 'senso', label: 'Senso · cited.md', x: 0.05, y: 0.5, kind: 'source' },
 ];
 
@@ -21,9 +22,10 @@ const AGENTS: Node[] = [
   { id: 'scout', label: 'Scout', x: 0.50, y: 0.22, kind: 'agent' },
   { id: 'recon', label: 'Recon', x: 0.70, y: 0.32, kind: 'agent' },
   // Middle ring (decision)
-  { id: 'triage', label: 'Triage', x: 0.32, y: 0.50, kind: 'agent' },
+  { id: 'triage', label: 'Triage', x: 0.30, y: 0.50, kind: 'agent' },
   { id: 'verify_counter', label: 'Verify · Counter', x: 0.50, y: 0.40, kind: 'agent' },
-  { id: 'cohort', label: 'Cohort', x: 0.68, y: 0.50, kind: 'agent' },
+  { id: 'cohort', label: 'Cohort', x: 0.66, y: 0.50, kind: 'agent' },
+  { id: 'substitute', label: 'Substitute', x: 0.74, y: 0.62, kind: 'agent' },
   { id: 'routing_comms', label: 'Routing · Comms', x: 0.50, y: 0.58, kind: 'agent' },
   // Inner ring (synthesis)
   { id: 'writer', label: 'Writer', x: 0.38, y: 0.72, kind: 'agent' },

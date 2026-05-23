@@ -20,6 +20,19 @@ type Workflow = {
   cohort?: { patient_count: number; high_risk_count: number } | null;
   audit?: { citations_verified: number; approved: boolean } | null;
   published?: { cited_md_url: string; fallback: boolean } | null;
+  substitutes?: {
+    recalled_drug: string;
+    recalled_target: string;
+    embedding_dim: number;
+    notes: string;
+    candidates: {
+      drug_name: string;
+      drug_class: string;
+      target_protein: string;
+      target_similarity: number;
+      rationale: string;
+    }[];
+  } | null;
 };
 
 export default function BriefPage({ params }: { params: { id: string } }) {
@@ -99,6 +112,38 @@ export default function BriefPage({ params }: { params: { id: string } }) {
             <Section title="Recommendation">
               <p className="text-ice/90 leading-relaxed">{b.recommendation}</p>
             </Section>
+
+            {wf?.substitutes && wf.substitutes.candidates.length > 0 && (
+              <Section title="Therapeutic alternatives · BioNeMo ESM2">
+                <p className="text-xs text-slate-light mb-3">
+                  Recalled target: <span className="text-ice">{wf.substitutes.recalled_target}</span>
+                  {wf.substitutes.embedding_dim > 0 && (
+                    <span> · ranked by cosine similarity over {wf.substitutes.embedding_dim}-d protein embeddings.</span>
+                  )}
+                </p>
+                <ul className="space-y-3">
+                  {wf.substitutes.candidates.map((c, i) => (
+                    <li key={i} className="card p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-ice font-semibold">{c.drug_name}</div>
+                          <div className="text-[11px] text-slate-light">
+                            {c.drug_class}
+                            {c.target_protein ? ` · ${c.target_protein}` : ''}
+                          </div>
+                        </div>
+                        {c.target_similarity > 0 && (
+                          <div className="text-teal-glow font-mono text-sm">
+                            sim {c.target_similarity.toFixed(3)}
+                          </div>
+                        )}
+                      </div>
+                      {c.rationale && <p className="text-xs text-ice/80 mt-2">{c.rationale}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            )}
 
             <Section title="Citations">
               <ol className="list-decimal list-inside space-y-1.5">

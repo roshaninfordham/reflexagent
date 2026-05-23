@@ -14,3 +14,4 @@ PyJWT==2.10.1
 ddtrace==2.18.0
 tenacity==9.0.0
 orjson==3.10.12
+numpy==2.1.3

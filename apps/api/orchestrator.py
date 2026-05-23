@@ -15,6 +15,7 @@ from apps.api.agents import (
     recon,
     routing_comms,
     scout,
+    substitute,
     triage,
     verify_counter,
     writer,
@@ -85,12 +86,21 @@ async def orchestrate(payload: TriggerPayload) -> WorkflowResult:
         recon_task = asyncio.create_task(recon.run(workflow_id, result.normalized))
         result.scout, result.recon = await asyncio.gather(scout_task, recon_task)
 
-        # Phase B: Triage (depends on Scout) + Cohort (independent) in parallel.
+        # Phase B: Triage (depends on Scout) + Cohort + Substitute (independent) in parallel.
         triage_task = asyncio.create_task(
             triage.run(workflow_id, result.normalized, result.scout)
         )
         cohort_task = asyncio.create_task(cohort.run(workflow_id, result.normalized))
-        result.triage, result.cohort = await asyncio.gather(triage_task, cohort_task)
+        substitute_task = asyncio.create_task(
+            substitute.run(
+                workflow_id,
+                result.normalized,
+                reason_for_recall=payload.reason,
+            )
+        )
+        result.triage, result.cohort, result.substitutes = await asyncio.gather(
+            triage_task, cohort_task, substitute_task
+        )
 
         # Phase C: Verify+Counter (depends on Scout + Triage).
         result.verification = await verify_counter.run(

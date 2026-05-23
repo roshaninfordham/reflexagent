@@ -18,6 +18,19 @@ type Workflow = {
   brief?: { title: string; summary: string; citations: { title: string; url: string }[] } | null;
   audit?: { citations_verified: number; approved: boolean } | null;
   published?: { cited_md_url: string; fallback: boolean } | null;
+  substitutes?: {
+    recalled_drug: string;
+    recalled_target: string;
+    embedding_dim: number;
+    notes: string;
+    candidates: {
+      drug_name: string;
+      drug_class: string;
+      target_protein: string;
+      target_similarity: number;
+      rationale: string;
+    }[];
+  } | null;
 };
 
 export default function WorkflowPage({ params }: { params: { id: string } }) {
@@ -97,6 +110,30 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
               </>
             ) : <Empty />}
           </Card>
+
+          {wf?.substitutes && wf.substitutes.candidates.length > 0 && (
+            <Card title="Substitutes · BioNeMo">
+              <div className="text-[11px] text-slate-light mb-1.5">
+                Target: <span className="text-ice">{wf.substitutes.recalled_target}</span>
+              </div>
+              <ul className="space-y-1.5">
+                {wf.substitutes.candidates.map((c, i) => (
+                  <li key={i} className="text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-ice font-medium">{c.drug_name}</span>
+                      <span className="text-teal-glow tabular-nums text-xs">
+                        {c.target_similarity > 0 ? `sim ${c.target_similarity.toFixed(3)}` : 'n/a'}
+                      </span>
+                    </div>
+                    {c.target_protein && <div className="text-[10px] text-slate-light">target: {c.target_protein}</div>}
+                  </li>
+                ))}
+              </ul>
+              <div className="text-[10px] text-slate-light mt-2">
+                {wf.substitutes.embedding_dim ? `ESM2 dim ${wf.substitutes.embedding_dim}` : 'embeddings unavailable'}
+              </div>
+            </Card>
+          )}
 
           {wf?.published && (
             <Card title="Published">

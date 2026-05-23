@@ -157,6 +157,22 @@ class Published(BaseModel):
     fallback: bool = False
 
 
+class SubstituteCandidate(BaseModel):
+    drug_name: str
+    drug_class: str = ""
+    target_protein: str = ""
+    target_similarity: float = 0.0  # cosine sim to recalled drug's target
+    rationale: str = ""
+
+
+class Substitutes(BaseModel):
+    recalled_drug: str
+    recalled_target: str = ""
+    candidates: list[SubstituteCandidate] = Field(default_factory=list)
+    embedding_dim: int = 0
+    notes: str = ""
+
+
 class WorkflowResult(BaseModel):
     workflow_id: UUID
     payload: TriggerPayload
@@ -170,6 +186,7 @@ class WorkflowResult(BaseModel):
     brief: Brief | None = None
     audit: Audit | None = None
     published: Published | None = None
+    substitutes: Substitutes | None = None
     started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
     status: Literal["running", "completed", "failed"] = "running"

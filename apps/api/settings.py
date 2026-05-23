@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     nvidia_vision_model: str = Field(
         default="meta/llama-3.2-90b-vision-instruct", alias="NVIDIA_VISION_MODEL"
     )
+    nvidia_biology_api_key: str = Field(default="", alias="NVIDIA_BIOLOGY_API_KEY")
+    nvidia_biology_url: str = Field(
+        default="https://health.api.nvidia.com/v1/biology/meta/esm2-650m",
+        alias="NVIDIA_BIOLOGY_URL",
+    )
 
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5", alias="ANTHROPIC_MODEL")
