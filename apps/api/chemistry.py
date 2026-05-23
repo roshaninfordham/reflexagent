@@ -54,26 +54,35 @@ async def lookup_compound(name: str) -> dict[str, Any]:
     out["structure_2d_url"] = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/PNG?image_size=large"
     out["structure_3d_url"] = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/record/SDF?record_type=3d"
     out["pubchem_url"] = f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
-    # 2. Properties (one round-trip for the most common fields)
+    # 2. Properties — PubChem renamed CanonicalSMILES → SMILES + InChI/InChIKey
+    # now live on dedicated endpoints. Try the modern bundle first.
     props_doc = await _get_json(
         f"{PUBCHEM}/compound/cid/{cid}/property/"
-        "IUPACName,CanonicalSMILES,InChI,InChIKey,MolecularFormula,MolecularWeight,"
-        "XLogP,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
+        "IUPACName,SMILES,IsomericSMILES,MolecularFormula,MolecularWeight,"
+        "XLogP,HBondDonorCount,HBondAcceptorCount,RotatableBondCount,TPSA/JSON"
     )
     props = ((props_doc or {}).get("PropertyTable") or {}).get("Properties") or [{}]
     p = props[0] if props else {}
+    smiles = p.get("SMILES") or p.get("IsomericSMILES") or p.get("CanonicalSMILES")
+
+    # InChI + InChIKey via their dedicated endpoints (more reliable)
+    inchi_doc = await _get_json(f"{PUBCHEM}/compound/cid/{cid}/property/InChI,InChIKey/JSON")
+    inchi_p = ((inchi_doc or {}).get("PropertyTable") or {}).get("Properties") or [{}]
+    ip = inchi_p[0] if inchi_p else {}
+
     out.update(
         {
             "iupac": p.get("IUPACName"),
-            "smiles": p.get("CanonicalSMILES"),
-            "inchi": p.get("InChI"),
-            "inchikey": p.get("InChIKey"),
+            "smiles": smiles,
+            "inchi": ip.get("InChI"),
+            "inchikey": ip.get("InChIKey"),
             "formula": p.get("MolecularFormula"),
             "mw": p.get("MolecularWeight"),
             "xlogp": p.get("XLogP"),
             "h_donor": p.get("HBondDonorCount"),
             "h_acceptor": p.get("HBondAcceptorCount"),
             "rotatable": p.get("RotatableBondCount"),
+            "tpsa_pubchem": p.get("TPSA"),
             "source": "pubchem",
         }
     )
