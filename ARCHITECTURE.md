@@ -20,7 +20,7 @@ flowchart TB
         MON[Autonomous Monitor<br/>asyncio task, 60s tick]
         ORC[Orchestrator<br/>11-agent scheduler]
         BUS[Trace Bus<br/>asyncio Queues per workflow]
-        SSE["SSE endpoint /api/v1/events/&#123;id&#125;"]
+        SSE["SSE endpoint /api/v1/events/{id}"]
         PAY[x402 + Coinbase CDP payments]
     end
 
@@ -299,7 +299,7 @@ flowchart TB
     classDef state fill:#1e3a5f,stroke:#5EEAD4,color:#E0F2FE
     classDef ui fill:#0D9488,stroke:#5EEAD4,color:#06101F
 
-    SSE[EventSource subscribe to<br/>/api/v1/events/&#123;id&#125;]:::state
+    SSE["EventSource subscribe to<br/>/api/v1/events/{id}"]:::state
     Q[eventQueue useRef Array]:::state
     PUL[pulses useRef Map]:::state
     CUR[cursors useRef Array max 30]:::state
@@ -334,28 +334,28 @@ This is the difference between 60fps butter and laggy stutter when SSE bursts ar
 sequenceDiagram
     autonumber
     participant U as UI
-    participant API as POST /api/v1/premium-subbrief
+    participant API as Premium API
     participant CDP as Coinbase Base Sepolia
     participant CH as ClickHouse
 
-    U->>API: POST {workflow_id, question}
-    API-->>U: 402 Payment Required<br/>{x402Version, accepts: [exact-USDC-base-sepolia, jwt-stub]}
+    U->>API: POST workflow_id and question
+    API-->>U: 402 Payment Required with x402 challenge
 
     alt real on-chain settlement
         U->>CDP: send 0.5 USDC to payTo
         CDP-->>U: tx hash
-        U->>API: POST with X-PAYMENT={scheme:exact, transaction:tx_hash}
-        API->>CDP: eth_getTransactionByHashtx_hash
-        CDP-->>API: tx confirmed blockNumber
-        API->>CH: insert x402_transactions
-        API-->>U: 200 {answer, payer, paid_usd}
+        U->>API: retry POST with X-PAYMENT header containing tx hash
+        API->>CDP: verify tx via eth_getTransactionByHash
+        CDP-->>API: tx confirmed at blockNumber
+        API->>CH: insert x402_transactions row
+        API-->>U: 200 answer plus settlement object
     else local dev / JWT stub
-        U->>API: GET /api/v1/payments/dev-token
-        API-->>U: x_payment_header base64 of {scheme:jwt-stub, token:HS256secret}
-        U->>API: POST with X-PAYMENT=&lt;header&gt;
-        API->>API: jwt.decode verify
-        API->>CH: insert x402_transactions payer=dev-jwt
-        API-->>U: 200 {answer, payer, paid_usd}
+        U->>API: GET dev-token endpoint
+        API-->>U: HS256 JWT signed with X402_SECRET
+        U->>API: retry POST with X-PAYMENT header containing JWT
+        API->>API: verify JWT signature
+        API->>CH: insert x402_transactions row payer dev-jwt
+        API-->>U: 200 answer
     end
 ```
 
@@ -376,7 +376,7 @@ flowchart LR
     A --> TS[trace_span context manager]
     TS --> CHL[ClickHouse agent_traces]:::ch
     TS --> Q[asyncio.Queue per workflow]
-    Q --> SSE["SSE /api/v1/events/&#123;id&#125;"]
+    Q --> SSE["SSE /api/v1/events/{id}"]
     L --> DD[Datadog LLM Observability<br/>via ddtrace-run auto-instr]:::sink
     SSE --> UI[Canvas Agent Theater]
 
