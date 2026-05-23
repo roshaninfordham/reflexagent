@@ -79,17 +79,21 @@ export default function AgentTheater({ workflowId }: { workflowId: string }) {
 
   // -------- Resize handling --------
   useEffect(() => {
-    const el = wrapRef.current!;
+    const el = wrapRef.current;
+    if (!el) return;
     const obs = new ResizeObserver((entries) => {
+      if (!entries || !entries.length) return;
       const cr = entries[0].contentRect;
       sizeRef.current = { w: cr.width, h: cr.height };
-      const c = canvasRef.current!;
+      const c = canvasRef.current;
+      if (!c) return; // canvas may have unmounted mid-resize
       const dpr = window.devicePixelRatio || 1;
-      c.width = cr.width * dpr;
-      c.height = cr.height * dpr;
+      c.width = Math.max(1, Math.floor(cr.width * dpr));
+      c.height = Math.max(1, Math.floor(cr.height * dpr));
       c.style.width = `${cr.width}px`;
       c.style.height = `${cr.height}px`;
-      const ctx = c.getContext('2d')!;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     });
     obs.observe(el);
@@ -119,9 +123,15 @@ export default function AgentTheater({ workflowId }: { workflowId: string }) {
   // -------- RAF loop --------
   useEffect(() => {
     let raf = 0;
-    const ctx = canvasRef.current!.getContext('2d')!;
+    if (!canvasRef.current) return;
+    const initialCtx = canvasRef.current.getContext('2d');
+    if (!initialCtx) return;
 
     const draw = () => {
+      const c = canvasRef.current;
+      if (!c) { raf = requestAnimationFrame(draw); return; }
+      const ctx = c.getContext('2d');
+      if (!ctx) { raf = requestAnimationFrame(draw); return; }
       const { w, h } = sizeRef.current;
       const now = performance.now();
 
