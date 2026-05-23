@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
+import HotspotMap from '../../../components/HotspotMap';
 import MoleculePreview, { isPreviewable } from '../../../components/MoleculePreview';
 import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
@@ -69,6 +70,9 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
       <section className="px-6 md:px-10 pb-8 grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           <AgentTheater workflowId={id} />
+          {wf?.cohort && wf.cohort.patient_count > 0 && (
+            <HotspotMap workflowId={id} />
+          )}
           <VoiceAgent workflowId={id} />
         </div>
 

@@ -10,6 +10,7 @@ import random
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+from apps.api.geo import SEED_ZIP3
 from apps.api.tools import clickhouse_client
 
 random.seed(20260523)
@@ -62,7 +63,7 @@ def _random_patient(force_metformin_lot: str | None = None) -> dict:
         "patient_id": str(uuid4()),
         "age": age,
         "sex": sex,
-        "zip_3": str(random.randint(100, 999)),
+        "zip_3": random.choice(SEED_ZIP3),
         "conditions": conditions,
         "drugs_taken": drugs,
         "lots_dispensed": lots,

@@ -389,6 +389,74 @@ async def cost_summary():
     }
 
 
+# ----- Patient hotspot map (open source: aggregate cohort by zip3) -----
+
+
+@app.get("/api/v1/workflow/{workflow_id}/hotspots")
+async def workflow_hotspots(workflow_id: UUID):
+    """Aggregate the workflow's affected cohort by ZIP-3 with centroid coords.
+
+    Used by the frontend Leaflet heatmap. Pulls patient rows from ClickHouse
+    matching the workflow's drug + lots, groups by zip_3, joins to a static
+    centroid map (no external geocoding service required).
+    """
+    from apps.api import geo
+    from apps.api.tools import clickhouse_client
+    w = get_result(workflow_id)
+    if not w or not w.normalized:
+        raise HTTPException(404, "workflow not found or not yet normalized")
+    drug = w.normalized.normalized_drug
+    stem = (drug.split()[0] if drug else "")
+    lots = w.normalized.lot_numbers or []
+    try:
+        if lots:
+            rows = clickhouse_client.query_rows(
+                """
+                SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients,
+                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk
+                FROM patients
+                WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
+                  AND hasAny(lots_dispensed, %(lots)s)
+                GROUP BY zip_3
+                """,
+                {"stem": stem, "lots": lots},
+            )
+        else:
+            rows = clickhouse_client.query_rows(
+                """
+                SELECT CAST(zip_3 AS String) AS zip_3, count() AS patients,
+                       countIf(age >= 75 OR arrayExists(c -> positionCaseInsensitive(c, 'CKD') > 0, conditions)) AS high_risk
+                FROM patients
+                WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
+                GROUP BY zip_3
+                """,
+                {"stem": stem},
+            )
+    except Exception as e:  # noqa: BLE001
+        log.warning("hotspot SQL failed: %s", e)
+        rows = []
+    out = []
+    for r in rows:
+        z = str(r.get("zip_3") or "")
+        lat, lng, label = geo.lookup(z)
+        out.append(
+            {
+                "zip_3": z,
+                "lat": lat,
+                "lng": lng,
+                "label": label,
+                "patients": int(r.get("patients", 0)),
+                "high_risk": int(r.get("high_risk", 0)),
+            }
+        )
+    return {
+        "drug": drug,
+        "total_patients": sum(x["patients"] for x in out),
+        "total_high_risk": sum(x["high_risk"] for x in out),
+        "points": out,
+    }
+
+
 # ----- Outbox feed -----
 
 
