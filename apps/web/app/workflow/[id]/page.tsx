@@ -8,6 +8,8 @@ import DocumentsPanel from '../../../components/DocumentsPanel';
 import HotspotMap from '../../../components/HotspotMap';
 import InteractionsPanel from '../../../components/InteractionsPanel';
 import MoleculePreview, { isPreviewable } from '../../../components/MoleculePreview';
+import SimilarityPanel from '../../../components/SimilarityPanel';
+import TrialsPanel from '../../../components/TrialsPanel';
 import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
 
@@ -171,6 +173,16 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
               recalledDrug={wf.normalized.normalized_drug}
               substitutes={wf.substitutes.candidates.map((c) => ({ drug: c.drug_name }))}
             />
+          )}
+
+          {/* Structural similarity (RDKit Tanimoto) */}
+          {wf?.normalized?.normalized_drug && (
+            <SimilarityPanel drugName={wf.normalized.normalized_drug} />
+          )}
+
+          {/* Live ClinicalTrials.gov cross-reference */}
+          {wf?.normalized?.normalized_drug && (
+            <TrialsPanel drugName={wf.normalized.normalized_drug} />
           )}
 
           {wf?.published && (

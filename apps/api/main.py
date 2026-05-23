@@ -390,6 +390,25 @@ async def alphafold_lookup(target: str):
     return {"target": target, "found": True, **result}
 
 
+# ----- ClinicalTrials.gov + Structural similarity -----
+
+
+@app.get("/api/v1/trials")
+async def trials_for(term: str, limit: int = 8):
+    """Live ClinicalTrials.gov v2 lookup for an intervention term (drug name).
+    Returns NCT IDs + status + phase + conditions + sponsor + URL."""
+    from apps.api import trials as t
+    items = await t.search(term, page_size=limit)
+    return {"term": term, "count": len(items), "items": items}
+
+
+@app.get("/api/v1/similar")
+async def similar_for(drug: str, limit: int = 8):
+    """Tanimoto-fingerprint similarity to a curated corpus of approved drugs."""
+    from apps.api import similarity as sim
+    return await sim.similar_to_drug(drug, top_k=limit)
+
+
 # ----- Drug-drug interaction checker -----
 
 

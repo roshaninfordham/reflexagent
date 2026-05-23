@@ -114,10 +114,16 @@ export default function ChemistryPanel({ drugName }: { drugName: string }) {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 items-start">
-        {/* Left: structure */}
-        <div className="bg-paper rounded p-3 flex items-center justify-center min-h-[240px] overflow-hidden [&_svg]:max-w-full [&_svg]:h-auto">
+        {/* Left: structure — render SVG via data URL inside <img> to avoid
+            dangerouslySetInnerHTML's reconciliation issues across React re-mounts. */}
+        <div className="bg-paper rounded p-3 flex items-center justify-center min-h-[240px] overflow-hidden">
           {activeSvg ? (
-            <div className="w-full flex items-center justify-center" dangerouslySetInnerHTML={{ __html: activeSvg }} />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt={drugName}
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(activeSvg)}`}
+              className="max-h-[240px] max-w-full object-contain"
+            />
           ) : c.structure_2d_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img alt={drugName} src={c.structure_2d_url} className="max-h-full max-w-full object-contain" />

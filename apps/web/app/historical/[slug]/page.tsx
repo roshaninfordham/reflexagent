@@ -6,7 +6,9 @@ import { Suspense, useEffect, useState } from 'react';
 import AlphaFoldViewer from '../../../components/AlphaFoldViewer';
 import ChemistryPanel from '../../../components/ChemistryPanel';
 import InteractionsPanel from '../../../components/InteractionsPanel';
+import SimilarityPanel from '../../../components/SimilarityPanel';
 import ThemeToggle from '../../../components/ThemeToggle';
+import TrialsPanel from '../../../components/TrialsPanel';
 import { API_BASE, api } from '../../../lib/api';
 
 type Recall = {
@@ -125,6 +127,11 @@ function Inner({ slug }: { slug: string }) {
             />
           </div>
         )}
+
+        <div className="mt-5 grid lg:grid-cols-2 gap-5">
+          <SimilarityPanel drugName={detail.drug} />
+          <TrialsPanel drugName={detail.drug} />
+        </div>
 
         <div className="mt-6 grid lg:grid-cols-2 gap-5">
           <div className="card p-5 border-warn/30">
