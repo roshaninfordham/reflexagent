@@ -1,7 +1,7 @@
 # Reflex Safety Brief: Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride
 
-**Published:** 2026-05-23T17:20:44Z
-**Workflow ID:** `6ab4102b-e6b8-4e6a-90ef-9113de566ebf`
+**Published:** 2026-05-23T17:39:08Z
+**Workflow ID:** `af6ab84e-e52e-4a12-8ac6-0d09123e6038`
 **Severity Score:** 6.0 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
