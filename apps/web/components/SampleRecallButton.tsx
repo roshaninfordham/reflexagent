@@ -8,19 +8,33 @@ export default function SampleRecallButton() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  async function tryFetch(url: string) {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    return r;
+  }
+
   const onClick = async () => {
     setBusy(true); setErr(null);
     try {
-      // Fetch the generated recall fax image
-      const imgRes = await fetch(`${API_BASE}/api/v1/demo/sample-recall.png`);
-      if (!imgRes.ok) throw new Error('sample image unavailable');
+      // Try direct, then Next.js rewrite proxy (sidesteps any local CORS issues).
+      let imgRes: Response;
+      try {
+        imgRes = await tryFetch(`${API_BASE}/api/v1/demo/sample-recall.png`);
+      } catch {
+        imgRes = await tryFetch(`/api/proxy/v1/demo/sample-recall.png`);
+      }
       const blob = await imgRes.blob();
       const file = new File([blob], 'recall-fax.png', { type: 'image/png' });
-      // Upload to the vision endpoint
       const fd = new FormData();
       fd.append('file', file);
-      const up = await fetch(`${API_BASE}/api/v1/ingest/vision`, { method: 'POST', body: fd });
-      if (!up.ok) throw new Error(`vision ${up.status}`);
+      let up: Response;
+      try {
+        up = await fetch(`${API_BASE}/api/v1/ingest/vision`, { method: 'POST', body: fd });
+      } catch {
+        up = await fetch(`/api/proxy/v1/ingest/vision`, { method: 'POST', body: fd });
+      }
+      if (!up.ok) throw new Error(`vision returned ${up.status}`);
       const data = await up.json();
       if (data.workflow_id) router.push(`/ops?wf=${data.workflow_id}`);
       else router.push('/ops');

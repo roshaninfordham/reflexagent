@@ -14,7 +14,12 @@ export default function LaunchDemo({
   const onClick = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/demo/launch`, { method: 'POST' });
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/v1/demo/launch`, { method: 'POST' });
+      } catch {
+        res = await fetch(`/api/proxy/v1/demo/launch`, { method: 'POST' });
+      }
       const data = await res.json().catch(() => ({}));
       const wf = data.workflow_id || '';
       router.push(wf ? `/ops?wf=${wf}` : '/ops');

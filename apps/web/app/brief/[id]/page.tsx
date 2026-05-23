@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import BriefActions from '../../../components/BriefActions';
 import MoleculePreview from '../../../components/MoleculePreview';
 import Narrator from '../../../components/Narrator';
 import { api } from '../../../lib/api';
@@ -137,6 +138,12 @@ export default function BriefPage({ params }: { params: { id: string } }) {
             <Section title="Recommendation">
               <p className="text-ice/90 leading-relaxed">{b.recommendation}</p>
             </Section>
+
+            <BriefActions
+              workflowId={id}
+              brief={b}
+              citedUrl={wf?.published?.cited_md_url}
+            />
 
             {wf?.substitutes && wf.substitutes.candidates.length > 0 && (
               <Section title="Therapeutic alternatives · BioNeMo ESM2">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
+import MoleculePreview from '../../../components/MoleculePreview';
 import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
 
@@ -133,6 +134,16 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
               </ul>
               <div className="text-[10px] text-slate-light mt-2">
                 {wf.substitutes.embedding_dim ? `ESM2 dim ${wf.substitutes.embedding_dim}` : 'embeddings unavailable'}
+              </div>
+            </Card>
+          )}
+
+          {/* Live drug + target preview — surfaces the moment Substitute completes */}
+          {wf?.normalized?.normalized_drug && (
+            <Card title="Recalled drug · target preview">
+              <MoleculePreview drugName={wf.normalized.normalized_drug} size="small" />
+              <div className="text-[10px] text-slate-light mt-2">
+                2D from PubChem · 3D protein cartoon from RCSB PDB (rotating)
               </div>
             </Card>
           )}
