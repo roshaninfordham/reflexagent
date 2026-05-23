@@ -12,7 +12,6 @@ Reflex's contribution is a multi-agent verification swarm with an **active count
 ## What you see in 90 seconds
 
 ```mermaid
-
 sequenceDiagram
     autonumber
     actor Stage as Stage / Presenter
@@ -60,7 +59,6 @@ The autonomous monitor fires the swarm **without a click**. The Canvas Agent The
 ## Sponsor stack
 
 ```mermaid
-
 flowchart LR
     classDef sponsor fill:#0D9488,stroke:#5EEAD4,color:#06101F,stroke-width:1px
     classDef other fill:#1e293b,stroke:#94A3B8,color:#E0F2FE,stroke-width:1px
@@ -102,7 +100,6 @@ flowchart LR
 ## System architecture
 
 ```mermaid
-
 graph TB
     subgraph TRIGGERS[Triggers — any of these starts a workflow]
         T1[Autonomous Monitor<br/>OpenFDA poll, 60s]
@@ -113,7 +110,7 @@ graph TB
     subgraph CORE[FastAPI + asyncio]
         ORC[Orchestrator]
         EVT[Trace Bus<br/>asyncio.Queue per workflow]
-        SSE[SSE /api/v1/events]
+        SSE["SSE /api/v1/events"]
     end
 
     subgraph SWARM[11-Agent Swarm]
@@ -184,7 +181,6 @@ graph TB
 ## The 11 agents
 
 ```mermaid
-
 flowchart LR
     classDef ing fill:#0e7490,stroke:#5EEAD4,color:#E0F2FE
     classDef dec fill:#0D9488,stroke:#5EEAD4,color:#06101F
@@ -233,7 +229,6 @@ Each agent is one Python file in `apps/api/agents/`. Each has a precise role + r
 ## User personas — three real stories
 
 ```mermaid
-
 journey
     title Sarah — Director of Pharmacovigilance, mid-size biopharma
     section Before Reflex
@@ -247,7 +242,6 @@ journey
 ```
 
 ```mermaid
-
 journey
     title David — P&T Chair, 600-bed academic medical center
     section Before Reflex
@@ -264,7 +258,6 @@ journey
 ```
 
 ```mermaid
-
 journey
     title Maria — Independent rural pharmacist
     section Before Reflex
@@ -377,14 +370,13 @@ Open `http://localhost:3000`. The autonomous monitor is already polling OpenFDA 
 ## Security
 
 ```mermaid
-
 flowchart LR
     classDef ok fill:#10B981,stroke:#5EEAD4,color:#06101F
     classDef warn fill:#F59E0B,stroke:#fef3c7,color:#06101F
 
     A[.gitignore .env at root]:::ok --> B[All API keys in .env only]:::ok
     B --> C[.env never committed]:::ok
-    C --> D[Verified: git log -S 'real key' returns 0 results]:::ok
+    C --> D["Verified: git log -S 'real key' returns 0 results"]:::ok
     E[Patient fixture is synthetic]:::ok
     F[Audit log every agent decision in ClickHouse]:::ok
     G[HIPAA-ready architecture; not certified]:::warn
@@ -406,13 +398,12 @@ What Reflex doesn't claim:
 ## Observability
 
 ```mermaid
-
 flowchart LR
     classDef dd fill:#632ca6,stroke:#a78bfa,color:#fff
     classDef ch fill:#fcdc00,stroke:#94A3B8,color:#06101F
     classDef ui fill:#0D9488,stroke:#5EEAD4,color:#06101F
 
-    R[Every reasoning() call]
+    R["Every reasoning() call"]
     R --> DD[Datadog LLM Observability<br/>via ddtrace-run]:::dd
     R --> CH[ClickHouse agent_traces<br/>via trace_span]:::ch
     CH --> UI[SSE → Canvas Agent Theater<br/>+ event ticker]:::ui

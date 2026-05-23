@@ -7,7 +7,6 @@ This document goes one layer below the [README](./README.md) to explain how ever
 ## 1. Runtime topology
 
 ```mermaid
-
 flowchart TB
     subgraph BROWSER[Browser]
         UI[Next.js 14 App Router<br/>localhost:3000]
@@ -21,7 +20,7 @@ flowchart TB
         MON[Autonomous Monitor<br/>asyncio task, 60s tick]
         ORC[Orchestrator<br/>11-agent scheduler]
         BUS[Trace Bus<br/>asyncio Queues per workflow]
-        SSE[SSE endpoint /api/v1/events/&#123;id&#125;]
+        SSE["SSE endpoint /api/v1/events/&#123;id&#125;"]
         PAY[x402 + Coinbase CDP payments]
     end
 
@@ -65,7 +64,6 @@ The whole server is a single Python process, single asyncio loop. The frontend i
 ## 2. The trigger paths
 
 ```mermaid
-
 stateDiagram-v2
     [*] --> Autonomous: OpenFDA poll (60s)
     [*] --> Manual: POST /api/v1/trigger
@@ -94,7 +92,6 @@ stateDiagram-v2
 ## 3. The 11-agent swarm (sequence)
 
 ```mermaid
-
 sequenceDiagram
     autonumber
     participant O as Orchestrator
@@ -141,7 +138,6 @@ Phases A and B are `asyncio.gather`. Verification is the critical-path bottlenec
 ## 4. Reasoning engine
 
 ```mermaid
-
 flowchart LR
     classDef agent fill:#0D9488,stroke:#5EEAD4,color:#06101F
     classDef tool fill:#1e3a5f,stroke:#5EEAD4,color:#E0F2FE
@@ -157,7 +153,7 @@ flowchart LR
     end
 
     subgraph reasoning.py
-        REASON[reason / reason_json / reason_vision]:::tool
+        REASON["reason / reason_json / reason_vision"]:::tool
         SEM[asyncio.Semaphore - 1 in-flight]:::tool
         POOL[Round-robin key pool]:::tool
     end
@@ -191,7 +187,6 @@ Every agent imports `reason`/`reason_json`/`reason_vision` from one file. That f
 ## 5. NVIDIA BioNeMo Substitute path
 
 ```mermaid
-
 sequenceDiagram
     autonumber
     participant S as Substitute Agent
@@ -201,7 +196,7 @@ sequenceDiagram
     participant C as Cosine ranker
 
     S->>N: "Given Metformin recall reason, what's the target +<br/>3 therapeutic alternatives?"
-    N-->>S: {target: PRKAA1, alternatives: [Sitagliptin/DPP4, Glipizide/KCNJ11, Pioglitazone/PPARG]}
+    N-->>S: {target: PRKAA1, alternatives: ["Sitagliptin/DPP4, Glipizide/KCNJ11, Pioglitazone/PPARG"]}
 
     S->>F: get sequence for PRKAA1 (anchor)
     F-->>S: AMPK α1 catalytic domain residues
@@ -227,7 +222,6 @@ The same protein structures are then rendered in the UI via `MoleculePreview` us
 ## 6. ClickHouse schema
 
 ```mermaid
-
 erDiagram
     adverse_events {
         UUID event_id PK
@@ -294,14 +288,13 @@ erDiagram
     adverse_events ||--|| monitor_seen : "deduplicated against"
 ```
 
-DDL is at `infra/clickhouse/init.sql`, idempotent via `CREATE TABLE IF NOT EXISTS`. The `ClickHouse client` has a transparent in-memory fallback so the system still runs end-to-end if no `CLICKHOUSE_HOST` is configured (useful for first-time setup).
+DDL is at `infra/clickhouse/init.sql`, idempotent via `CREATE TABLE IF NOT EXISTS`. The `ClickHouse client` has a transparent in-memory fallback so the system still runs end-to-end if no `CLICKHOUSE_HOST` is configured useful for first-time setup.
 
 ---
 
 ## 7. Frontend — Canvas Agent Theater
 
 ```mermaid
-
 flowchart TB
     classDef state fill:#1e3a5f,stroke:#5EEAD4,color:#E0F2FE
     classDef ui fill:#0D9488,stroke:#5EEAD4,color:#06101F
@@ -338,7 +331,6 @@ This is the difference between 60fps butter and laggy stutter when SSE bursts ar
 ## 8. x402 payment flow
 
 ```mermaid
-
 sequenceDiagram
     autonumber
     participant U as UI
@@ -353,16 +345,16 @@ sequenceDiagram
         U->>CDP: send 0.5 USDC to payTo
         CDP-->>U: tx hash
         U->>API: POST with X-PAYMENT={scheme:exact, transaction:tx_hash}
-        API->>CDP: eth_getTransactionByHash(tx_hash)
-        CDP-->>API: tx confirmed (blockNumber)
+        API->>CDP: eth_getTransactionByHashtx_hash
+        CDP-->>API: tx confirmed blockNumber
         API->>CH: insert x402_transactions
         API-->>U: 200 {answer, payer, paid_usd}
     else local dev / JWT stub
         U->>API: GET /api/v1/payments/dev-token
-        API-->>U: x_payment_header (base64 of {scheme:jwt-stub, token:HS256(secret)})
+        API-->>U: x_payment_header base64 of {scheme:jwt-stub, token:HS256secret}
         U->>API: POST with X-PAYMENT=&lt;header&gt;
         API->>API: jwt.decode verify
-        API->>CH: insert x402_transactions (payer=dev-jwt)
+        API->>CH: insert x402_transactions payer=dev-jwt
         API-->>U: 200 {answer, payer, paid_usd}
     end
 ```
@@ -374,7 +366,6 @@ Both paths log to `x402_transactions` so the ClickHouse revenue ledger reflects 
 ## 9. Observability
 
 ```mermaid
-
 flowchart LR
     classDef src fill:#0D9488,stroke:#5EEAD4,color:#06101F
     classDef sink fill:#632ca6,stroke:#a78bfa,color:#fff
@@ -385,13 +376,13 @@ flowchart LR
     A --> TS[trace_span context manager]
     TS --> CHL[ClickHouse agent_traces]:::ch
     TS --> Q[asyncio.Queue per workflow]
-    Q --> SSE[SSE /api/v1/events/&#123;id&#125;]
+    Q --> SSE["SSE /api/v1/events/&#123;id&#125;"]
     L --> DD[Datadog LLM Observability<br/>via ddtrace-run auto-instr]:::sink
     SSE --> UI[Canvas Agent Theater]
 
-    CHL -.-> Q1[SQL: per-agent latency p99]
-    CHL -.-> Q2[SQL: cost per workflow]
-    DD -.-> DDB[Dashboard: span tree, token usage, retries]
+    CHL -.-> Q1["SQL: per-agent latency p99"]
+    CHL -.-> Q2["SQL: cost per workflow"]
+    DD -.-> DDB["Dashboard: span tree, token usage, retries"]
 ```
 
 The same agent event lands in **three** places:
