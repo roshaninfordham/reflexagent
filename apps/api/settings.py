@@ -19,8 +19,21 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Reasoning provider — defaults to NVIDIA NIM (OpenAI-compatible).
+    reasoning_provider: str = Field(default="nvidia", alias="REASONING_PROVIDER")  # 'nvidia' | 'anthropic'
+    nvidia_api_key: str = Field(default="", alias="NVIDIA_API_KEY")
+    nvidia_base_url: str = Field(
+        default="https://integrate.api.nvidia.com/v1", alias="NVIDIA_BASE_URL"
+    )
+    nvidia_text_model: str = Field(
+        default="meta/llama-3.3-70b-instruct", alias="NVIDIA_TEXT_MODEL"
+    )
+    nvidia_vision_model: str = Field(
+        default="meta/llama-3.2-90b-vision-instruct", alias="NVIDIA_VISION_MODEL"
+    )
+
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
-    reasoning_model: str = Field(default="claude-sonnet-4-5", alias="REASONING_MODEL")
+    anthropic_model: str = Field(default="claude-sonnet-4-5", alias="ANTHROPIC_MODEL")
 
     nimble_api_key: str = Field(default="", alias="NIMBLE_API_KEY")
     nimble_base_url: str = Field(

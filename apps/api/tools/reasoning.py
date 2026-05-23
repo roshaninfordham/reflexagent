@@ -1,17 +1,18 @@
-"""Reflex Reasoning Engine — the only place the LLM vendor SDK lives.
+"""Reflex Reasoning Engine — the only place the LLM vendor SDKs live.
 
-All agents call `reason(...)` or `reason_json(...)` here. This module is also
-the canonical surface that `lapdog`'s ambient Datadog LLM Observability
-instrumentation hooks into — so every reasoning call automatically becomes a
-span in the dashboard with no per-call wiring.
+Defaults to NVIDIA NIM (`integrate.api.nvidia.com/v1`, OpenAI-compatible) so
+`ddtrace`'s OpenAI auto-instrumentation captures every reasoning call as a
+Datadog LLM Observability span with zero per-call wiring. Anthropic SDK
+remains available as an alternate provider via REASONING_PROVIDER=anthropic.
 """
 from __future__ import annotations
 
+import base64 as _b64
 import json
 import logging
 from typing import Any, Type, TypeVar
 
-import anthropic
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from apps.api.settings import get_settings
@@ -25,11 +26,26 @@ class ReasoningUnavailable(RuntimeError):
     """Raised when no upstream reasoning API key is configured."""
 
 
-def _client() -> anthropic.AsyncAnthropic:
+def _have_key() -> bool:
     s = get_settings()
-    if not s.anthropic_api_key:
-        raise ReasoningUnavailable("ANTHROPIC_API_KEY not configured")
-    return anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
+    if s.reasoning_provider == "anthropic":
+        return bool(s.anthropic_api_key)
+    return bool(s.nvidia_api_key)
+
+
+def _openai_client() -> AsyncOpenAI:
+    s = get_settings()
+    if not s.nvidia_api_key:
+        raise ReasoningUnavailable("NVIDIA_API_KEY not configured")
+    return AsyncOpenAI(api_key=s.nvidia_api_key, base_url=s.nvidia_base_url)
+
+
+def _model_text() -> str:
+    return get_settings().nvidia_text_model
+
+
+def _model_vision() -> str:
+    return get_settings().nvidia_vision_model
 
 
 async def reason(
@@ -40,15 +56,19 @@ async def reason(
     temperature: float = 0.2,
 ) -> str:
     """Plain text reasoning."""
-    s = get_settings()
-    resp = await _client().messages.create(
-        model=s.reasoning_model,
+    if not _have_key():
+        raise ReasoningUnavailable("No reasoning provider key configured")
+    client = _openai_client()
+    resp = await client.chat.completions.create(
+        model=_model_text(),
         max_tokens=max_tokens,
         temperature=temperature,
-        system=system,
-        messages=[{"role": "user", "content": user}],
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
     )
-    return _extract_text(resp)
+    return (resp.choices[0].message.content or "").strip()
 
 
 async def reason_json(
@@ -60,7 +80,8 @@ async def reason_json(
     temperature: float = 0.2,
 ) -> _T:
     """Structured-output reasoning. Returns a parsed Pydantic model."""
-    s = get_settings()
+    if not _have_key():
+        raise ReasoningUnavailable("No reasoning provider key configured")
     enforced_system = (
         system
         + "\n\nReturn ONLY a single JSON object that matches this schema. "
@@ -68,19 +89,23 @@ async def reason_json(
         + "Schema:\n"
         + json.dumps(schema.model_json_schema(), indent=2)
     )
-    resp = await _client().messages.create(
-        model=s.reasoning_model,
+    client = _openai_client()
+    resp = await client.chat.completions.create(
+        model=_model_text(),
         max_tokens=max_tokens,
         temperature=temperature,
-        system=enforced_system,
-        messages=[{"role": "user", "content": user}],
+        # Many OpenAI-compatible servers honor this; NIM accepts json_object.
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": enforced_system},
+            {"role": "user", "content": user},
+        ],
     )
-    raw = _extract_text(resp)
+    raw = (resp.choices[0].message.content or "").strip()
     cleaned = _strip_code_fences(raw)
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError:
-        # Last-ditch: try to find the first {...} block
         start = cleaned.find("{")
         end = cleaned.rfind("}")
         if start >= 0 and end > start:
@@ -99,47 +124,41 @@ async def reason_vision(
     max_tokens: int = 1024,
     temperature: float = 0.1,
 ) -> str:
-    """Vision call — used for PDF/image upload entity extraction."""
-    s = get_settings()
-    resp = await _client().messages.create(
-        model=s.reasoning_model,
+    """Vision call — used for PDF/image upload entity extraction.
+
+    NIM accepts image_url with a `data:` URI for inline image input.
+    """
+    if not _have_key():
+        raise ReasoningUnavailable("No reasoning provider key configured")
+    client = _openai_client()
+    data_uri = f"data:{media_type};base64,{image_b64}"
+    resp = await client.chat.completions.create(
+        model=_model_vision(),
         max_tokens=max_tokens,
         temperature=temperature,
-        system=system,
         messages=[
+            {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_b64,
-                        },
-                    },
+                    {"type": "image_url", "image_url": {"url": data_uri}},
                     {"type": "text", "text": user},
                 ],
-            }
+            },
         ],
     )
-    return _extract_text(resp)
-
-
-def _extract_text(resp: Any) -> str:
-    chunks = []
-    for block in resp.content:
-        if getattr(block, "type", None) == "text":
-            chunks.append(block.text)
-    return "".join(chunks).strip()
+    return (resp.choices[0].message.content or "").strip()
 
 
 def _strip_code_fences(s: str) -> str:
     s = s.strip()
     if s.startswith("```"):
-        # Drop the opening fence (and any language tag)
         s = s.split("\n", 1)[1] if "\n" in s else s
-        # Drop the closing fence
         if s.endswith("```"):
-            s = s[: -3]
+            s = s[:-3]
     return s.strip()
+
+
+# Backwards-compat helper for the unused inline base64 import on some paths.
+__all__ = ["reason", "reason_json", "reason_vision", "ReasoningUnavailable"]
+_ = _b64  # silence linter if unused above

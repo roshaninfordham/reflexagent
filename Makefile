@@ -12,7 +12,7 @@ dev:
 
 api:
 	. .venv/bin/activate && set -a && . ./.env && set +a && \
-	uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+	ddtrace-run uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
 
 web:
 	cd apps/web && npm run dev

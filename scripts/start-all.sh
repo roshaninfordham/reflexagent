@@ -31,12 +31,16 @@ fi
 
 mkdir -p logs
 
-echo "[reflex] starting FastAPI on :8000 (autonomous monitor on)"
+echo "[reflex] starting FastAPI on :8000 (autonomous monitor on, ddtrace-run for LLM Obs)"
 (
   set -a
   source .env
   set +a
-  exec uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --log-level info
+  if command -v ddtrace-run >/dev/null 2>&1 && [ -n "${DD_API_KEY:-}" ]; then
+    exec ddtrace-run uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --log-level info
+  else
+    exec uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --log-level info
+  fi
 ) > logs/api.log 2>&1 &
 API_PID=$!
 
