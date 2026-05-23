@@ -247,23 +247,27 @@ export default function PremiumPage() {
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid sm:grid-cols-2 gap-2">
             <button
-              className="btn btn-primary flex-1"
-              disabled={paying || !chosen || !canSettle}
-              onClick={payViaChain}
-              title={canSettle ? 'Send 0.50 USDC on Base Sepolia and unlock the sub-brief' : 'Fund the wallet first'}
+              className="btn btn-primary"
+              disabled={paying || !chosen}
+              onClick={payViaJwt}
+              title="Same x402 protocol, off-chain signed proof. Instant. Recommended for demo."
             >
-              {paying ? 'Settling on-chain…' : 'Pay $0.50 on-chain · Settle on Base Sepolia'}
+              {paying ? 'Paying…' : 'Pay $0.50 (signed x402)'}
             </button>
             <button
               className="btn"
-              disabled={paying || !chosen}
-              onClick={payViaJwt}
-              title="Skip chain settlement — use the JWT-stub path"
+              disabled={paying || !chosen || !canSettle}
+              onClick={payViaChain}
+              title={canSettle ? 'Send a real Base Sepolia USDC tx and unlock the sub-brief' : 'Fund the wallet first (ETH for gas)'}
             >
-              Dev pay (JWT)
+              {paying ? 'Settling on-chain…' : canSettle ? 'Pay on-chain instead' : 'Pay on-chain (need test ETH)'}
             </button>
+          </div>
+          <div className="text-[10px] text-slate-light leading-relaxed">
+            Both buttons satisfy the x402 protocol. The signed path returns a verifiable HMAC proof; the on-chain
+            path settles a real Base Sepolia USDC transfer with a BaseScan receipt. Same code path on the agent side.
           </div>
           {err && <div className="text-xs text-alert">{err}</div>}
         </div>
