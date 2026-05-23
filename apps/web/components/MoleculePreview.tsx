@@ -13,25 +13,85 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Lookup table: drug → target protein PDB ID. Curated from RCSB.
+// Lookup tables: drug name → target protein PDB ID, AND target-protein keywords → PDB ID.
+// The protein-keyword map lets us render structures even when the autonomous monitor
+// catches a drug we don't recognize but the Substitute agent identifies a known target.
 const TARGET_PDB: Record<string, { pdb: string; chain?: string; label: string }> = {
+  // Diabetes / metabolic
   metformin: { pdb: '4CFE', chain: 'A', label: 'AMPK α1 (PRKAA1)' },
   sitagliptin: { pdb: '1X70', chain: 'A', label: 'DPP-4' },
   glipizide: { pdb: '6BAA', chain: 'A', label: 'KCNJ11 / SUR1' },
+  glyburide: { pdb: '6BAA', chain: 'A', label: 'KCNJ11 / SUR1' },
   semaglutide: { pdb: '5VEW', chain: 'R', label: 'GLP-1 receptor' },
+  liraglutide: { pdb: '5VEW', chain: 'R', label: 'GLP-1 receptor' },
   empagliflozin: { pdb: '7VSI', chain: 'A', label: 'SGLT2' },
+  dapagliflozin: { pdb: '7VSI', chain: 'A', label: 'SGLT2' },
   pioglitazone: { pdb: '5Y2T', chain: 'A', label: 'PPARγ' },
+  // Cardiovascular
   atorvastatin: { pdb: '1HW8', chain: 'A', label: 'HMG-CoA reductase' },
+  simvastatin: { pdb: '1HW8', chain: 'A', label: 'HMG-CoA reductase' },
+  rosuvastatin: { pdb: '1HW8', chain: 'A', label: 'HMG-CoA reductase' },
   valsartan: { pdb: '6OS0', chain: 'A', label: 'AT1 receptor' },
+  losartan: { pdb: '6OS0', chain: 'A', label: 'AT1 receptor' },
+  lisinopril: { pdb: '1O8A', chain: 'A', label: 'ACE' },
+  amlodipine: { pdb: '5GJV', chain: 'A', label: 'L-type Ca²⁺ channel (CACNA1C)' },
+  // GI
   ranitidine: { pdb: '7UL5', chain: 'A', label: 'H2 receptor' },
+  omeprazole: { pdb: '5YLU', chain: 'A', label: 'H+/K+ ATPase' },
+  // Anticoagulation
   dabigatran: { pdb: '1KTS', chain: 'H', label: 'Thrombin' },
+  warfarin: { pdb: '2W6E', chain: 'A', label: 'VKORC1' },
+  apixaban: { pdb: '2P16', chain: 'A', label: 'Factor Xa' },
+  rivaroxaban: { pdb: '2P16', chain: 'A', label: 'Factor Xa' },
+  // Hormones
   insulin: { pdb: '1MSO', chain: 'A', label: 'Insulin' },
+  // Oncology (EGFR family — common cancer targets)
+  erlotinib: { pdb: '1M17', chain: 'A', label: 'EGFR' },
+  gefitinib: { pdb: '2ITY', chain: 'A', label: 'EGFR' },
+  afatinib: { pdb: '4G5J', chain: 'A', label: 'EGFR' },
+  osimertinib: { pdb: '4ZAU', chain: 'A', label: 'EGFR T790M' },
+  imatinib: { pdb: '1IEP', chain: 'A', label: 'BCR-ABL kinase' },
+  // SSRIs / psych
+  sertraline: { pdb: '5I6X', chain: 'A', label: 'SERT (SLC6A4)' },
+  fluoxetine: { pdb: '5I6X', chain: 'A', label: 'SERT (SLC6A4)' },
+  // Pain
+  ibuprofen: { pdb: '1EQG', chain: 'A', label: 'COX-1 (PTGS1)' },
+  naproxen: { pdb: '3KK6', chain: 'A', label: 'COX-2 (PTGS2)' },
 };
 
-function pdbFor(drug: string) {
+// Match keywords (gene symbols + common protein nicknames) → fallback PDB when the
+// LLM-identified target_protein is recognizable even if the drug name isn't in our map.
+const PROTEIN_PDB: { match: RegExp; pdb: string; chain?: string; label: string }[] = [
+  { match: /\b(EGFR|epidermal growth factor)\b/i, pdb: '1M17', chain: 'A', label: 'EGFR' },
+  { match: /\b(BCR.?ABL|ABL1)\b/i, pdb: '1IEP', chain: 'A', label: 'BCR-ABL kinase' },
+  { match: /\b(PRKAA1|AMP.?activated|AMPK)\b/i, pdb: '4CFE', chain: 'A', label: 'AMPK α1' },
+  { match: /\b(DPP.?4|dipeptidyl peptidase)\b/i, pdb: '1X70', chain: 'A', label: 'DPP-4' },
+  { match: /\b(GLP.?1R|glucagon.?like peptide)\b/i, pdb: '5VEW', chain: 'R', label: 'GLP-1R' },
+  { match: /\b(SGLT2|SLC5A2)\b/i, pdb: '7VSI', chain: 'A', label: 'SGLT2' },
+  { match: /\b(PPARG|PPAR.?gamma|PPARγ)\b/i, pdb: '5Y2T', chain: 'A', label: 'PPARγ' },
+  { match: /\b(HMGCR|HMG.?CoA)\b/i, pdb: '1HW8', chain: 'A', label: 'HMG-CoA reductase' },
+  { match: /\b(AGTR1|AT1 receptor|angiotensin)\b/i, pdb: '6OS0', chain: 'A', label: 'AT1 receptor' },
+  { match: /\b(ACE\b|angiotensin.?converting)\b/i, pdb: '1O8A', chain: 'A', label: 'ACE' },
+  { match: /\b(HRH2|histamine H2)\b/i, pdb: '7UL5', chain: 'A', label: 'H2 receptor' },
+  { match: /\b(thrombin|F2 prothrombin)\b/i, pdb: '1KTS', chain: 'H', label: 'Thrombin' },
+  { match: /\b(factor xa|F10)\b/i, pdb: '2P16', chain: 'A', label: 'Factor Xa' },
+  { match: /\b(VKORC1|vitamin K)\b/i, pdb: '2W6E', chain: 'A', label: 'VKORC1' },
+  { match: /\b(SERT|SLC6A4|serotonin transporter)\b/i, pdb: '5I6X', chain: 'A', label: 'SERT' },
+  { match: /\b(COX.?1|PTGS1)\b/i, pdb: '1EQG', chain: 'A', label: 'COX-1' },
+  { match: /\b(COX.?2|PTGS2)\b/i, pdb: '3KK6', chain: 'A', label: 'COX-2' },
+  { match: /\b(KCNJ11|SUR1|ABCC8|sulfonylurea)\b/i, pdb: '6BAA', chain: 'A', label: 'KCNJ11 / SUR1' },
+  { match: /\b(insulin\b)/i, pdb: '1MSO', chain: 'A', label: 'Insulin' },
+];
+
+function pdbFor(drug: string, targetProteinHint?: string) {
   const key = drug.toLowerCase().trim();
   for (const k of Object.keys(TARGET_PDB)) {
     if (key.includes(k) || k.includes(key.split(' ')[0])) return TARGET_PDB[k];
+  }
+  if (targetProteinHint) {
+    for (const p of PROTEIN_PDB) {
+      if (p.match.test(targetProteinHint)) return { pdb: p.pdb, chain: p.chain, label: p.label };
+    }
   }
   return null;
 }
@@ -78,15 +138,17 @@ function load3Dmol(): Promise<any> {
 
 export default function MoleculePreview({
   drugName,
+  targetHint,
   size = 'normal',
 }: {
   drugName: string;
+  targetHint?: string;
   size?: 'normal' | 'small';
 }) {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const [pdbLoaded, setPdbLoaded] = useState(false);
   const [pdbErr, setPdbErr] = useState<string | null>(null);
-  const target = pdbFor(drugName);
+  const target = pdbFor(drugName, targetHint);
   const imgUrl = pubchemUrl(drugName);
   const [imgErr, setImgErr] = useState(false);
 

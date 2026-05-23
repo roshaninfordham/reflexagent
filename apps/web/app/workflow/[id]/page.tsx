@@ -139,9 +139,13 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
           )}
 
           {/* Live drug + target preview — surfaces the moment Substitute completes */}
-          {wf?.normalized?.normalized_drug && isPreviewable(wf.normalized.normalized_drug) && (
+          {wf?.normalized?.normalized_drug && (isPreviewable(wf.normalized.normalized_drug) || wf.substitutes?.recalled_target) && (
             <Card title="Recalled drug · target preview">
-              <MoleculePreview drugName={wf.normalized.normalized_drug} size="small" />
+              <MoleculePreview
+                drugName={wf.normalized.normalized_drug}
+                targetHint={wf.substitutes?.recalled_target}
+                size="small"
+              />
               <div className="text-[10px] text-slate-light mt-2">
                 2D from PubChem · 3D protein cartoon from RCSB PDB (rotating)
               </div>

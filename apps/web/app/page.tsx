@@ -5,6 +5,7 @@ import LaunchDemo from '../components/LaunchDemo';
 import MonitorStatus from '../components/MonitorStatus';
 import RecentWorkflows from '../components/RecentWorkflows';
 import SampleRecallButton from '../components/SampleRecallButton';
+import SamplesPanel from '../components/SamplesPanel';
 import ThemeToggle from '../components/ThemeToggle';
 import TriggerPanel from '../components/TriggerPanel';
 
@@ -145,7 +146,7 @@ export default function HomePage() {
       <section className="px-6 md:px-10 py-10 max-w-6xl mx-auto grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           <TriggerPanel />
-          <SampleRecallButton />
+          <SamplesPanel />
         </div>
         <div className="space-y-5">
           <RecentWorkflows />

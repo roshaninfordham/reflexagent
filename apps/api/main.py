@@ -324,19 +324,37 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
 
 
 @app.post("/api/v1/demo/launch")
-async def demo_launch():
-    """Trigger a curated metformin recall workflow synchronously enough to return its id."""
+async def demo_launch(slug: str = "metformin"):
+    """Trigger a curated recall workflow and return its id."""
     from apps.api import demo as demo_mod
-    wf_id = await demo_mod.launch_curated_workflow()
-    return {"workflow_id": wf_id, "status": "running" if wf_id else "queued"}
+    wf_id = await demo_mod.launch_curated_workflow(slug)
+    return {"workflow_id": wf_id, "slug": slug, "status": "running" if wf_id else "queued"}
 
 
 @app.get("/api/v1/demo/sample-recall.png")
-async def demo_sample_recall():
+async def demo_sample_recall_default():
     from apps.api import demo as demo_mod
     from fastapi.responses import Response
-    data = demo_mod.generate_sample_recall_image()
+    data = demo_mod.generate_sample_recall_image("metformin")
     return Response(content=data, media_type="image/png")
+
+
+@app.get("/api/v1/demo/sample/{slug}.png")
+async def demo_sample_recall_slug(slug: str):
+    from apps.api import demo as demo_mod
+    from fastapi.responses import Response
+    data = demo_mod.generate_sample_recall_image(slug)
+    return Response(
+        content=data,
+        media_type="image/png",
+        headers={"Content-Disposition": f"inline; filename=recall-{slug}.png"},
+    )
+
+
+@app.get("/api/v1/demo/samples")
+async def demo_samples():
+    from apps.api import demo as demo_mod
+    return {"items": demo_mod.list_samples()}
 
 
 # ----- Cost / pricing -----
