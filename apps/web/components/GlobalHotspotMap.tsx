@@ -60,8 +60,9 @@ function loadLeaflet(): Promise<any> {
 }
 
 export default function GlobalHotspotMap() {
-  const mapRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const layersRef = useRef<{ heat?: any; markers?: any }>({});
   const [data, setData] = useState<Resp | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -88,11 +89,18 @@ export default function GlobalHotspotMap() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!hostRef.current) return;
+    const host = hostRef.current;
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%; height:100%; position:absolute; inset:0;';
+    host.appendChild(inner);
+    innerRef.current = inner;
+
     (async () => {
       try {
         const L = await loadLeaflet();
-        if (cancelled || !mapRef.current || mapInstance.current) return;
-        const m = L.map(mapRef.current, {
+        if (cancelled || !inner.isConnected || mapInstance.current) return;
+        const m = L.map(inner, {
           center: [39.8283, -98.5795], zoom: 4, zoomControl: true, attributionControl: true,
         });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -100,12 +108,14 @@ export default function GlobalHotspotMap() {
         }).addTo(m);
         mapInstance.current = m;
       } catch (e: any) {
-        setErr(e?.message || 'map init failed');
+        if (!cancelled) setErr(e?.message || 'map init failed');
       }
     })();
     return () => {
       cancelled = true;
-      if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; }
+      try { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } } catch {}
+      try { if (inner.parentNode === host) host.removeChild(inner); } catch {}
+      innerRef.current = null;
     };
   }, []);
 
@@ -169,7 +179,7 @@ export default function GlobalHotspotMap() {
           ) : 'loading…'}
         </div>
       </div>
-      <div ref={mapRef} style={{ height: 320, width: '100%' }} />
+      <div ref={hostRef} style={{ height: 320, width: '100%', position: 'relative' }} />
       {data && data.drugs.length > 0 && (
         <div className="px-4 py-2 border-t border-teal/10 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
           {data.drugs.slice(0, 8).map((d) => (

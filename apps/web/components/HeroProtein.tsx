@@ -28,7 +28,7 @@ const FEATURES = [
 ];
 
 export default function HeroProtein() {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(false);
@@ -36,23 +36,33 @@ export default function HeroProtein() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setErr(false);
+    if (!hostRef.current) return;
+
+    const host = hostRef.current;
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%; height:100%; position:absolute; inset:0;';
+    host.appendChild(inner);
+
     (async () => {
       try {
         const $3Dmol = await load3Dmol();
         const target = FEATURES[idx];
         const pdbText = await fetch(`https://files.rcsb.org/view/${target.pdb}.pdb`).then((r) => r.text());
-        if (cancelled || !ref.current) return;
-        ref.current.innerHTML = '';
-        const viewer = $3Dmol.createViewer(ref.current, { backgroundColor: 'rgba(0,0,0,0)' });
+        if (cancelled || !inner.isConnected) return;
+        const viewer = $3Dmol.createViewer(inner, { backgroundColor: 'rgba(0,0,0,0)' });
         viewer.addModel(pdbText, 'pdb');
         viewer.setStyle({}, { cartoon: { color: 'spectrum' } });
         viewer.zoomTo();
         viewer.render();
-        viewer.spin('y', 0.6);
+        try { viewer.spin('y', 0.6); } catch {}
         setLoading(false);
       } catch (e) { if (!cancelled) { setErr(true); setLoading(false); } }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      try { if (inner.parentNode === host) host.removeChild(inner); } catch {}
+    };
   }, [idx]);
 
   // Cycle every 12 seconds
@@ -64,7 +74,7 @@ export default function HeroProtein() {
   const target = FEATURES[idx];
   return (
     <div className="card relative w-full overflow-hidden" style={{ aspectRatio: '1 / 1', minHeight: 280 }}>
-      <div ref={ref} className="absolute inset-0" />
+      <div ref={hostRef} className="absolute inset-0" />
       {loading && !err && (
         <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-light">loading {target.pdb}…</div>
       )}

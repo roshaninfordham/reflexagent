@@ -59,7 +59,11 @@ function plddtBadge(score?: number) {
 export default function AlphaFoldViewer({ target }: { target: string }) {
   const [data, setData] = useState<AFResp | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const viewerRef = useRef<HTMLDivElement | null>(null);
+  // React owns hostRef. We append an inner div for 3Dmol to populate, then
+  // explicitly remove just that child on cleanup. React never sees 3Dmol's DOM
+  // mutations → no removeChild reconciliation errors.
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const [pdbLoaded, setPdbLoaded] = useState(false);
 
   useEffect(() => {
@@ -74,10 +78,18 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
   }, [target]);
 
   useEffect(() => {
-    if (!data?.found || !data.pdb_url || !viewerRef.current) return;
+    if (!data?.found || !data.pdb_url || !hostRef.current) return;
     let cancelled = false;
     setPdbLoaded(false);
     setErr(null);
+
+    // Create a fresh inner div the library can populate without colliding
+    // with React's child reconciliation.
+    const host = hostRef.current;
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%; height:100%; position:absolute; inset:0;';
+    host.appendChild(inner);
+    innerRef.current = inner;
 
     (async () => {
       try {
@@ -86,35 +98,36 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
           if (!r.ok) throw new Error(`AlphaFold PDB ${r.status}`);
           return r.text();
         });
-        if (cancelled || !viewerRef.current) return;
+        if (cancelled || !inner.isConnected) return;
         if (!pdbText || pdbText.length < 100) throw new Error('empty PDB response');
-        // AlphaFold PDBs lack a CRYST1 record. Some 3Dmol.js builds crash
-        // when reading 'symmetries' off the parser. Prepend a unit-cell
-        // CRYST1 so the parser is happy.
         if (!/^CRYST1/m.test(pdbText)) {
           pdbText = 'CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\n' + pdbText;
         }
-
-        viewerRef.current.innerHTML = '';
-        const v = $3Dmol.createViewer(viewerRef.current, { backgroundColor: '#06101F' });
-        try {
-          v.addModel(pdbText, 'pdb', { keepH: true });
-        } catch (modelErr: any) {
-          // last-ditch: try without options
-          v.addModel(pdbText, 'pdb');
-        }
-        // Spectrum color is the safest fallback — readable + can't crash
+        const v = $3Dmol.createViewer(inner, { backgroundColor: '#06101F' });
+        try { v.addModel(pdbText, 'pdb', { keepH: true }); }
+        catch { v.addModel(pdbText, 'pdb'); }
         v.setStyle({}, { cartoon: { color: 'spectrum' } });
         v.zoomTo();
         v.render();
         try { v.spin('y', 0.4); } catch {}
         setPdbLoaded(true);
       } catch (e: any) {
-        setErr(e?.message || 'AlphaFold render failed');
-        setPdbLoaded(false);
+        if (!cancelled) {
+          setErr(e?.message || 'AlphaFold render failed');
+          setPdbLoaded(false);
+        }
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      // Remove the inner div ourselves so React's reconciliation never sees
+      // 3Dmol's mutations.
+      try {
+        if (inner.parentNode === host) host.removeChild(inner);
+      } catch {}
+      innerRef.current = null;
+    };
   }, [data?.pdb_url]);
 
   if (err) return <div className="card p-4 text-xs text-alert">AlphaFold: {err}</div>;
@@ -148,9 +161,9 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
           </a>
         )}
       </div>
-      <div ref={viewerRef} style={{ height: 320, width: '100%', background: '#06101F' }} className="relative">
+      <div ref={hostRef} style={{ height: 320, width: '100%', background: '#06101F', position: 'relative' }}>
         {!pdbLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-light">
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-light pointer-events-none">
             loading AlphaFold PDB…
           </div>
         )}

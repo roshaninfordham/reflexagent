@@ -145,7 +145,7 @@ export default function MoleculePreview({
   targetHint?: string;
   size?: 'normal' | 'small';
 }) {
-  const viewerRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const [pdbLoaded, setPdbLoaded] = useState(false);
   const [pdbErr, setPdbErr] = useState<string | null>(null);
   const target = pdbFor(drugName, targetHint);
@@ -153,34 +153,32 @@ export default function MoleculePreview({
   const [imgErr, setImgErr] = useState(false);
 
   useEffect(() => {
-    if (!target || !viewerRef.current) return;
+    if (!target || !hostRef.current) return;
     let cancelled = false;
     setPdbLoaded(false);
     setPdbErr(null);
+
+    // React-owned host + library-owned inner — prevents removeChild errors
+    // when MoleculePreview re-mounts with a different drug.
+    const host = hostRef.current;
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%; height:100%; position:absolute; inset:0;';
+    host.appendChild(inner);
 
     (async () => {
       try {
         const $3Dmol = await load3Dmol();
         const pdbText = await fetch(`https://files.rcsb.org/view/${target.pdb}.pdb`).then((r) => r.text());
-        if (cancelled || !viewerRef.current) return;
-        viewerRef.current.innerHTML = '';
-        const viewer = $3Dmol.createViewer(viewerRef.current, {
-          backgroundColor: '#06101F',
-        });
+        if (cancelled || !inner.isConnected) return;
+        const viewer = $3Dmol.createViewer(inner, { backgroundColor: '#06101F' });
         viewer.addModel(pdbText, 'pdb');
         viewer.setStyle({}, { cartoon: { color: 'spectrum' } });
         if (target.chain) {
           viewer.setStyle({ chain: target.chain }, { cartoon: { colorscheme: 'cyanCarbon' } });
         }
-        viewer.setHoverable(
-          {},
-          true,
-          (atom: any, _viewer: any) => atom && (atom.resn || ''),
-          (_atom: any, _viewer: any) => {}
-        );
         viewer.zoomTo();
         viewer.render();
-        viewer.spin('y', 0.5);
+        try { viewer.spin('y', 0.5); } catch {}
         setPdbLoaded(true);
       } catch (e: any) {
         if (!cancelled) setPdbErr(String(e?.message || e));
@@ -189,6 +187,7 @@ export default function MoleculePreview({
 
     return () => {
       cancelled = true;
+      try { if (inner.parentNode === host) host.removeChild(inner); } catch {}
     };
   }, [target?.pdb, target?.chain]);
 
@@ -221,10 +220,10 @@ export default function MoleculePreview({
           3D target protein · RCSB PDB
         </div>
         {target ? (
-          <div className="relative rounded bg-ink/60" style={{ height: dim.h }}>
-            <div ref={viewerRef} className="absolute inset-0 rounded overflow-hidden" />
+          <div className="relative rounded bg-ink/60 overflow-hidden" style={{ height: dim.h }}>
+            <div ref={hostRef} className="absolute inset-0" />
             {!pdbLoaded && !pdbErr && (
-              <div className={`absolute inset-0 flex items-center justify-center text-slate-light ${dim.t}`}>
+              <div className={`absolute inset-0 flex items-center justify-center text-slate-light pointer-events-none ${dim.t}`}>
                 loading {target.pdb}…
               </div>
             )}

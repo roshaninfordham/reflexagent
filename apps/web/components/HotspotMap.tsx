@@ -67,8 +67,9 @@ function fmtDate(ts: number): string {
 }
 
 export default function HotspotMap({ workflowId }: { workflowId: string }) {
-  const mapRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
   const layersRef = useRef<{ heat?: any; markers?: any }>({});
   const [data, setData] = useState<Resp | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -110,34 +111,36 @@ export default function HotspotMap({ workflowId }: { workflowId: string }) {
       .filter((p) => p.patients > 0);
   }, [data, cursor]);
 
-  // Init map
+  // Init map — React owns hostRef; Leaflet writes to innerRef which we manage.
   useEffect(() => {
     let cancelled = false;
+    if (!hostRef.current) return;
+    const host = hostRef.current;
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:100%; height:100%; position:absolute; inset:0;';
+    host.appendChild(inner);
+    innerRef.current = inner;
+
     (async () => {
       try {
         const L = await loadLeaflet();
-        if (cancelled || !mapRef.current || mapInstance.current) return;
-        const m = L.map(mapRef.current, {
-          center: [39.8283, -98.5795],
-          zoom: 4,
-          zoomControl: true,
-          attributionControl: true,
+        if (cancelled || !inner.isConnected || mapInstance.current) return;
+        const m = L.map(inner, {
+          center: [39.8283, -98.5795], zoom: 4, zoomControl: true, attributionControl: true,
         });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
         }).addTo(m);
         mapInstance.current = m;
       } catch (e: any) {
-        setErr(e?.message || 'map init failed');
+        if (!cancelled) setErr(e?.message || 'map init failed');
       }
     })();
     return () => {
       cancelled = true;
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
+      try { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } } catch {}
+      try { if (inner.parentNode === host) host.removeChild(inner); } catch {}
+      innerRef.current = null;
     };
   }, []);
 
@@ -233,7 +236,7 @@ export default function HotspotMap({ workflowId }: { workflowId: string }) {
           ) : 'loading…'}
         </div>
       </div>
-      <div ref={mapRef} style={{ height: 380, width: '100%' }} />
+      <div ref={hostRef} style={{ height: 380, width: '100%', position: 'relative' }} />
 
       {data?.time_range && (
         <div className="px-4 py-3 border-t border-teal/10 flex items-center gap-3">
