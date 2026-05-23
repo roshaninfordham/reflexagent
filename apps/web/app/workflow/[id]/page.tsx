@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
+import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
 
 type Workflow = {
@@ -65,8 +66,9 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
       </header>
 
       <section className="px-6 md:px-10 pb-8 grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-5">
           <AgentTheater workflowId={id} />
+          <VoiceAgent workflowId={id} />
         </div>
 
         <div className="space-y-4">

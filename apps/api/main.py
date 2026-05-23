@@ -5,7 +5,7 @@ import asyncio
 import base64
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import (
@@ -317,6 +317,108 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
         "paid_usd": s.x402_price_usd,
         "settlement": settlement,  # null if JWT path; populated for real chain settlement
     }
+
+
+# ----- Conversational voice agent (NIM-backed chat) -----
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"] = "user"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    workflow_id: UUID | None = None
+    history: list[ChatTurn] = []
+    message: str
+
+
+def _build_chat_context(workflow_id: UUID | None) -> str:
+    """Concise summary of the current workflow for the voice agent's context."""
+    if not workflow_id:
+        return ""
+    w = get_result(workflow_id)
+    if not w:
+        return ""
+    parts = []
+    if w.brief:
+        parts.append(f"Active brief: {w.brief.title}.")
+        parts.append(f"Summary: {w.brief.summary}")
+    if w.triage:
+        parts.append(
+            f"Triage: FDA Class {w.triage.severity}, urgency {w.triage.urgency}, "
+            f"severity score {w.triage.severity_score}/10."
+        )
+    if w.cohort:
+        parts.append(
+            f"Affected cohort: {w.cohort.patient_count} patients, "
+            f"{w.cohort.high_risk_count} high-risk."
+        )
+    if w.verification:
+        parts.append(f"Verification verdict: {w.verification.verdict}.")
+        if w.verification.conflict_summary:
+            parts.append(f"Counter-evidence: {w.verification.conflict_summary}")
+    if w.substitutes and w.substitutes.candidates:
+        names = ", ".join(
+            f"{c.drug_name} ({c.target_protein.split(' ')[0] if c.target_protein else '?'}, sim {c.target_similarity:.2f})"
+            for c in w.substitutes.candidates[:3]
+        )
+        parts.append(
+            f"Therapeutic substitutes (BioNeMo ESM2 ranked): {names}. "
+            f"Recalled target: {w.substitutes.recalled_target}."
+        )
+    return "\n".join(parts)
+
+
+CHAT_SYSTEM = """ROLE
+You are Reflex's voice operator — the conversational front-end to a 10-agent
+pharmacovigilance swarm. The user is a pharmacy director, P&T chair, or
+investigative journalist asking questions about a verified safety brief.
+
+VOICE STYLE
+- Speak in short sentences (≤20 words).
+- One idea per sentence. No bulleted lists when speaking aloud.
+- Numerals stated as words when natural ("eighteen patients" reads better
+  out loud than "18 patients" — but exact counts may stay as digits).
+- No hedging filler like "I think" or "perhaps".
+- Always lead with the answer; then one sentence of context.
+
+GROUNDING
+- Use only the supplied workflow context. If the user asks something not
+  in scope, say so in one sentence and offer what you CAN answer.
+- Never invent FDA classifications, citation URLs, or cohort numbers.
+
+WHEN YOU LACK INFORMATION
+- "I don't have that yet" + offer to trigger a new workflow.
+
+ACTIONABLE SUGGESTIONS
+- When asked "what should we do", lean on the Routing and Comms outputs:
+  pharmacist memo, clinician alert, patient letter — refer to them by name.
+- When asked about alternatives, refer to the BioNeMo Substitute agent's
+  ranked list explicitly ("the Substitute agent ranks Sitagliptin first
+  with similarity 0.93")."""
+
+
+@app.post("/api/v1/chat")
+async def chat(req: ChatRequest):
+    ctx = _build_chat_context(req.workflow_id)
+    history_text = "\n".join(
+        f"{t.role.upper()}: {t.content}" for t in (req.history or [])[-8:]
+    )
+    user_block = (
+        (f"Workflow context:\n{ctx}\n\n" if ctx else "")
+        + (f"Conversation so far:\n{history_text}\n\n" if history_text else "")
+        + f"User: {req.message}"
+    )
+    try:
+        answer = await reason(CHAT_SYSTEM, user_block, max_tokens=400)
+    except Exception as e:  # noqa: BLE001
+        log.warning("chat fallback: %s", e)
+        answer = (
+            "Reasoning engine is rate-limited. The active brief is on screen; "
+            "try again in a moment."
+        )
+    return {"answer": answer}
 
 
 @app.get("/api/v1/payments/dev-token")
