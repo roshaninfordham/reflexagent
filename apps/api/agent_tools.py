@@ -172,6 +172,17 @@ TOOL_SPECS: list[dict[str, Any]] = [
 # ----- Tool implementations -----
 
 
+def _drug_name_for(workflow_id: UUID | None) -> str:
+    if not workflow_id:
+        return ""
+    w = get_result(workflow_id)
+    if w and w.normalized:
+        return w.normalized.normalized_drug
+    if w and w.payload and w.payload.drug_name:
+        return w.payload.drug_name
+    return ""
+
+
 def _log_outbox(
     workflow_id: UUID | None,
     channel: str,
@@ -185,6 +196,7 @@ def _log_outbox(
             [
                 {
                     "workflow_id": str(workflow_id) if workflow_id else str(UUID(int=0)),
+                    "drug_name": _drug_name_for(workflow_id),
                     "channel": channel,
                     "recipient_count": recipient_count,
                     "body": body[:8000],

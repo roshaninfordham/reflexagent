@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ActivityFeed from '../components/ActivityFeed';
 import MonitorStatus from '../components/MonitorStatus';
 import RecentWorkflows from '../components/RecentWorkflows';
 import TriggerPanel from '../components/TriggerPanel';
@@ -44,8 +45,9 @@ export default function HomePage() {
           <MonitorStatus />
           <TriggerPanel />
         </div>
-        <div>
+        <div className="space-y-5">
           <RecentWorkflows />
+          <ActivityFeed limit={14} />
         </div>
       </section>
 

@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS outbox
 (
     sent_id UUID DEFAULT generateUUIDv4(),
     workflow_id UUID,
+    drug_name LowCardinality(String) DEFAULT '',
     channel LowCardinality(String),  -- pharmacist_memo / clinician_alert / patient_letter / publish / payment
     recipient_count UInt32 DEFAULT 0,
     body String,

@@ -30,6 +30,7 @@ _inmem: dict[str, list[dict[str, Any]]] = {
     "x402_transactions": [],
     "workflows": [],
     "monitor_seen": [],
+    "outbox": [],
 }
 
 
@@ -164,6 +165,19 @@ def query_rows(sql: str, params: dict[str, Any] | None = None) -> list[dict]:
             return _inmem["workflows"][:]
         if "from agent_traces" in sql_lc:
             return _inmem["agent_traces"][:]
+        if "from outbox" in sql_lc:
+            rows = sorted(
+                _inmem["outbox"],
+                key=lambda r: r.get("sent_at") or "",
+                reverse=True,
+            )
+            limit = int(params.get("limit", 30))
+            # Decorate with sent_at if missing (in-memory inserts may omit it).
+            import datetime as _dt
+            for r in rows:
+                if not r.get("sent_at"):
+                    r["sent_at"] = _dt.datetime.utcnow().isoformat() + "Z"
+            return rows[:limit]
     return []
 
 

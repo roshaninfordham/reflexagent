@@ -319,6 +319,44 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
     }
 
 
+# ----- Outbox feed -----
+
+
+@app.get("/api/v1/outbox/recent")
+async def outbox_recent(limit: int = 30):
+    """Recent agent-triggered actions (memos sent, briefs published, payments).
+
+    Reads from ClickHouse with an in-memory fallback when CH isn't configured.
+    """
+    from apps.api.tools import clickhouse_client
+    try:
+        rows = clickhouse_client.query_rows(
+            """
+            SELECT sent_id, workflow_id, drug_name, channel, recipient_count,
+                   body, triggered_by, sent_at
+            FROM outbox
+            ORDER BY sent_at DESC
+            LIMIT %(limit)s
+            """,
+            {"limit": max(1, min(limit, 100))},
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("outbox query failed: %s", e)
+        rows = []
+    # Normalize datetimes to ISO strings for the client.
+    out = []
+    for r in rows:
+        item = dict(r)
+        sa = item.get("sent_at")
+        if sa is not None and not isinstance(sa, str):
+            item["sent_at"] = sa.isoformat() + "Z" if hasattr(sa, "isoformat") else str(sa)
+        # Truncate body for ticker.
+        b = item.get("body") or ""
+        item["body_preview"] = b[:160] + ("…" if len(b) > 160 else "")
+        out.append(item)
+    return {"items": out}
+
+
 # ----- Conversational voice agent (NIM-backed chat) -----
 
 
