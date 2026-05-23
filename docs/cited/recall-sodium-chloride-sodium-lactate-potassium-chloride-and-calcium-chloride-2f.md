@@ -1,15 +1,15 @@
 # Reflex Safety Brief: Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride
 
-**Published:** 2026-05-23T17:22:46Z
-**Workflow ID:** `55eea71f-c564-469a-bb3a-c4a491e99e69`
-**Severity Score:** 6.0 / 10
+**Published:** 2026-05-23T17:49:23Z
+**Workflow ID:** `83a920d5-9c21-4232-aa09-6a48aac466ea`
+**Severity Score:** 1.0 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
 ## Summary
-A Class II recall has been verified for Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride by B BRAUN MEDICAL INC. Reason: Presence of Particulate Matter.. Reflex confirmed the signal against 0 independent sources and ran an adversarial counter-evidence pass before publishing.
+A Class I (most serious) recall has been verified for Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride by B BRAUN MEDICAL INC. Reason: Presence of Particulate Matter.. Reflex confirmed the signal against 0 independent sources and ran an adversarial counter-evidence pass before publishing.
 
 ## Key Findings
-- B BRAUN MEDICAL INC initiated a Class II recall of Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride citing: Presence of Particulate Matter..
+- B BRAUN MEDICAL INC initiated a Class I (most serious) recall of Sodium Chloride, Sodium Lactate, Potassium Chloride, And Calcium Chloride citing: Presence of Particulate Matter..
 - Affected lots: #:J4P756, J4S843.
 
 ## Counter-Evidence Considered
