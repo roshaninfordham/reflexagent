@@ -1,0 +1,62 @@
+{
+  "metformin": {
+    "parsing": {
+      "organic_results": [
+        {
+          "title": "FDA Updates and Press Announcements on NDMA in Metformin",
+          "link": "https://www.fda.gov/drugs/drug-safety-and-availability/fda-updates-and-press-announcements-ndma-metformin",
+          "snippet": "FDA has been investigating the presence of N-Nitrosodimethylamine (NDMA), a probable human carcinogen, in metformin products. Several lots have been voluntarily recalled.",
+          "date": "2024-08-15"
+        },
+        {
+          "title": "Apotex Recalls Metformin HCl Extended-Release Tablets — Lots APX5523, APX5524",
+          "link": "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts/apotex-corp-issues-voluntary-nationwide-recall-metformin-hcl-er",
+          "snippet": "Apotex Corp. is voluntarily recalling specific lots of metformin HCl extended-release tablets 500mg due to NDMA above the FDA interim acceptable intake limit of 96 ng/day.",
+          "date": "2026-05-23"
+        },
+        {
+          "title": "FAERS Public Dashboard — Metformin Adverse Events",
+          "link": "https://fis.fda.gov/sense/app/95239e26-e0be-42d9-a960-9a5f7f1c25ee/sheet/7a47a261-d58b-4203-a8aa-6d3021737452",
+          "snippet": "Search FAERS for adverse events associated with Metformin. Over 81,000 reports submitted between 2012 and 2024.",
+          "date": "2024-12-01"
+        },
+        {
+          "title": "EMA — Metformin-containing medicines: NDMA review concluded",
+          "link": "https://www.ema.europa.eu/en/medicines/human/referrals/metformin-containing-medicines",
+          "snippet": "The European Medicines Agency's PRAC reviewed NDMA contamination in metformin and recommended manufacturers test product and confirm levels remain below interim limits.",
+          "date": "2024-03-12"
+        },
+        {
+          "title": "Metformin and NDMA: A systematic review of nitrosamine contamination — PubMed",
+          "link": "https://pubmed.ncbi.nlm.nih.gov/35142345/",
+          "snippet": "Systematic review of NDMA detection methodology, regulatory action timelines, and patient outcomes following metformin recalls. PMID: 35142345.",
+          "date": "2024-02-08"
+        },
+        {
+          "title": "Apotex Investor Press Release — Voluntary Recall Statement",
+          "link": "https://www.apotex.com/us/en/news/recall-statement-may-2026",
+          "snippet": "Apotex statement on voluntary recall: 'Out of an abundance of caution, we are pulling specific lots while we work with FDA to confirm root cause. Patient safety remains our priority.'",
+          "date": "2026-05-22"
+        }
+      ]
+    }
+  },
+  "valsartan": {
+    "parsing": {
+      "organic_results": [
+        {
+          "title": "FDA Updates and Press Announcements on Angiotensin II Receptor Blocker (ARB) Recalls (Valsartan)",
+          "link": "https://www.fda.gov/drugs/drug-safety-and-availability/fda-updates-and-press-announcements-angiotensin-ii-receptor-blocker-arb-recalls-valsartan-losartan",
+          "snippet": "FDA's ongoing investigation of nitrosamines in ARB products. Multiple manufacturers have voluntarily recalled valsartan-containing products.",
+          "date": "2024-10-01"
+        },
+        {
+          "title": "FAERS — Valsartan adverse events dashboard",
+          "link": "https://fis.fda.gov/sense/app/95239e26-e0be-42d9-a960-9a5f7f1c25ee/sheet/7a47a261-d58b-4203-a8aa-6d3021737452",
+          "snippet": "FAERS adverse event reports for Valsartan — over 18,000 reports since 2018.",
+          "date": "2024-11-20"
+        }
+      ]
+    }
+  }
+}
