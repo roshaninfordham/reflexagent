@@ -21,8 +21,14 @@ log = logging.getLogger(__name__)
 _T = TypeVar("_T", bound=BaseModel)
 
 
+class ReasoningUnavailable(RuntimeError):
+    """Raised when no upstream reasoning API key is configured."""
+
+
 def _client() -> anthropic.AsyncAnthropic:
     s = get_settings()
+    if not s.anthropic_api_key:
+        raise ReasoningUnavailable("ANTHROPIC_API_KEY not configured")
     return anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
 
 

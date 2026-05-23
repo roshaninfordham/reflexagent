@@ -56,11 +56,31 @@ app.include_router(events_router)
 @app.on_event("startup")
 async def _startup() -> None:
     s = get_settings()
+    _seed_inmem_if_empty()
     if s.monitor_enabled:
         log.info("starting autonomous monitor (interval=%ss)", s.monitor_poll_interval_seconds)
         await monitor_module.start()
     else:
         log.info("monitor disabled (MONITOR_ENABLED=0)")
+
+
+def _seed_inmem_if_empty() -> None:
+    """If ClickHouse isn't configured, populate the in-memory fixture once
+    so the swarm has cohort + historical data to chew on for the demo."""
+    from apps.api.tools import clickhouse_client
+
+    if clickhouse_client._have_host():
+        return
+    existing_patients = clickhouse_client.query_rows("SELECT 1 FROM patients LIMIT 1")
+    if existing_patients:
+        return
+    log.info("seeding in-memory fixture (no ClickHouse host configured)…")
+    try:
+        from infra.seed import seed_patients, seed_adverse_events
+        seed_patients.main()
+        seed_adverse_events.main()
+    except Exception as e:  # noqa: BLE001
+        log.warning("in-memory seed failed: %s", e)
 
 
 @app.on_event("shutdown")

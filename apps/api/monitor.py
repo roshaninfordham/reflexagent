@@ -73,14 +73,17 @@ def _mark_seen(external_id: str, source: str = "openfda") -> None:
 
 
 async def _poll_openfda(client: httpx.AsyncClient, limit: int = 15) -> list[dict[str, Any]]:
-    since = (datetime.utcnow() - timedelta(days=14)).strftime("%Y%m%d")
-    params = {
-        "search": f"report_date:[{since}+TO+NOW]",
-        "sort": "report_date:desc",
-        "limit": limit,
-    }
+    # OpenFDA expects unencoded '+' between TO tokens, and the bracket syntax
+    # must not be URL-encoded by httpx. We assemble the query string ourselves.
+    since = (datetime.utcnow() - timedelta(days=21)).strftime("%Y%m%d")
+    until = datetime.utcnow().strftime("%Y%m%d")
+    query = f"search=report_date:[{since}+TO+{until}]&sort=report_date:desc&limit={limit}"
+    url = f"{OPENFDA_URL}?{query}"
     try:
-        r = await client.get(OPENFDA_URL, params=params, timeout=15)
+        r = await client.get(url, timeout=15)
+        if r.status_code >= 500:
+            # OpenFDA can transiently 500; try the simpler 'recent' query.
+            r = await client.get(f"{OPENFDA_URL}?limit={limit}", timeout=15)
         r.raise_for_status()
         return r.json().get("results", [])
     except Exception as e:  # noqa: BLE001
