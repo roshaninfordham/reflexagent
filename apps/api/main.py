@@ -320,6 +320,50 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
     }
 
 
+# ----- Sources & documents (aggregated from Scout + Verify + Audit) -----
+
+
+@app.get("/api/v1/workflow/{workflow_id}/documents")
+async def workflow_documents(workflow_id: UUID):
+    """All reference documents the agents gathered for one workflow.
+    Aggregates: Scout findings (FDA/EMA/PubMed), Counter-evidence rebuttals,
+    Audit-verified citations, published brief URL. Grouped by source."""
+    w = get_result(workflow_id)
+    if not w:
+        raise HTTPException(404, "workflow not found")
+    grouped: dict[str, list[dict]] = {"fda": [], "ema": [], "pubmed": [], "counter": [], "audit_verified": [], "published": []}
+    if w.scout:
+        for f in w.scout.faers + w.scout.ema + w.scout.pubmed:
+            grouped.setdefault(f.source, []).append({
+                "title": f.title, "url": f.url, "snippet": f.snippet, "date": f.date,
+            })
+    if w.verification:
+        for ce in w.verification.counter_evidence:
+            grouped["counter"].append({
+                "title": "Counter-evidence", "url": ce.url, "snippet": ce.refutation, "source": ce.source,
+            })
+    if w.audit:
+        for c in w.audit.citations_failed:
+            pass  # only show verified ones below
+    if w.brief:
+        for c in w.brief.citations:
+            grouped["audit_verified"].append({
+                "title": c.title, "url": c.url, "accessed_at": c.accessed_at.isoformat() if c.accessed_at else None,
+            })
+    if w.published and w.published.cited_md_url:
+        grouped["published"].append({
+            "title": w.brief.title if w.brief else "Reflex Safety Brief",
+            "url": w.published.cited_md_url,
+            "type": "cited.md publication",
+        })
+    return {
+        "workflow_id": str(workflow_id),
+        "drug": w.normalized.normalized_drug if w.normalized else None,
+        "grouped": grouped,
+        "total": sum(len(v) for v in grouped.values()),
+    }
+
+
 # ----- Chemistry intelligence -----
 
 

@@ -42,6 +42,7 @@ function Inner({ slug }: { slug: string }) {
   const [detail, setDetail] = useState<Recall | null>(null);
   const [compare, setCompare] = useState<Compare | null>(null);
   const [busy, setBusy] = useState(false);
+  const [autoReplayed, setAutoReplayed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -53,6 +54,15 @@ function Inner({ slug }: { slug: string }) {
     })();
     return () => { mounted = false; };
   }, [slug]);
+
+  // Auto-fire the Reflex swarm once when the page loads with no workflow yet
+  useEffect(() => {
+    if (wf || busy || autoReplayed) return;
+    setAutoReplayed(true);
+    const t = setTimeout(() => replay(), 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wf, autoReplayed]);
 
   useEffect(() => {
     if (!wf) return;
@@ -135,7 +145,7 @@ function Inner({ slug }: { slug: string }) {
           <div className="card p-5 border-teal/30">
             <div className="text-[10px] uppercase tracking-widest text-teal-glow mb-2">What Reflex recommends</div>
             {!wf ? (
-              <div className="text-sm text-slate-light italic">Click "Replay through Reflex" above to fire the 11-agent swarm against this case.</div>
+              <div className="text-sm text-slate-light italic">{busy ? 'Firing the swarm automatically…' : 'Auto-replaying through Reflex…'}</div>
             ) : !compare?.reflex ? (
               <div className="text-sm text-slate-light italic">Swarm running… brief will appear here when ready.</div>
             ) : (

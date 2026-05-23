@@ -49,16 +49,48 @@ TARGET_UNIPROT: dict[str, tuple[str, str]] = {  # match key (substring) → (uni
     "kcnj11": ("Q14654", "KCNJ11 (K-ATP channel pore)"),
     "abcc8": ("Q09428", "SUR1 (ABCC8)"),
     "sulfonylurea receptor": ("Q09428", "SUR1 (ABCC8)"),
+    # Drug-name shortcuts that aren't strictly proteins but help the UI
+    # auto-find the right target for a known drug.
+    "dabigatran": ("P00734", "Thrombin (dabigatran target)"),
+    "warfarin": ("Q9BQB6", "VKORC1 (warfarin target)"),
+    "metformin": ("Q13131", "AMPK α1 (metformin target)"),
+    "atorvastatin": ("P04035", "HMG-CoA reductase (statin target)"),
+    "simvastatin": ("P04035", "HMG-CoA reductase (statin target)"),
+    "valsartan": ("P30556", "AT1 receptor (valsartan target)"),
+    "losartan": ("P30556", "AT1 receptor (losartan target)"),
+    "ranitidine": ("P25021", "Histamine H2 receptor (ranitidine target)"),
+    "omeprazole": ("P20648", "H+/K+ ATPase α (omeprazole target)"),
+    "sitagliptin": ("P27487", "DPP-4 (sitagliptin target)"),
+    "semaglutide": ("P43220", "GLP-1R (semaglutide target)"),
+    "liraglutide": ("P43220", "GLP-1R (liraglutide target)"),
+    "empagliflozin": ("P31639", "SGLT2 (empagliflozin target)"),
+    "glipizide": ("Q14654", "KCNJ11 (glipizide target)"),
+    "pioglitazone": ("P37231", "PPARγ (pioglitazone target)"),
+    "rofecoxib": ("P35354", "COX-2 (rofecoxib target)"),
+    "vioxx": ("P35354", "COX-2 (rofecoxib target)"),
+    "acetaminophen": ("P23219", "COX-1 (acetaminophen target — partial)"),
+    "tylenol": ("P23219", "COX-1 (acetaminophen target — partial)"),
+    "ibuprofen": ("P23219", "COX-1 (ibuprofen target)"),
+    "erlotinib": ("P00533", "EGFR (erlotinib target)"),
+    "imatinib": ("P00519", "ABL1 (imatinib target)"),
 }
 
 
 def resolve_uniprot(target_text: str | None) -> tuple[str, str] | None:
     if not target_text:
         return None
-    k = target_text.lower()
-    for key, (uniprot, label) in TARGET_UNIPROT.items():
-        if key in k:
-            return uniprot, label
+    # Normalize: strip parens, lowercase, also try just the drug stem.
+    import re as _re
+    raw = target_text.lower()
+    stripped = _re.sub(r"\s*\([^)]*\)\s*", " ", raw).strip()
+    candidates = [raw, stripped]
+    # Also try first word (e.g. 'dabigatran' from 'dabigatran (pradaxa)')
+    if " " in stripped:
+        candidates.append(stripped.split()[0])
+    for c in candidates:
+        for key, (uniprot, label) in TARGET_UNIPROT.items():
+            if key in c:
+                return uniprot, label
     return None
 
 

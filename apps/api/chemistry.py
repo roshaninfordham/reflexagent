@@ -32,6 +32,25 @@ async def _get_json(url: str) -> dict | None:
     return None
 
 
+def normalize_drug_query(name: str) -> str:
+    """Strip parenthetical brand/INN suffixes before searching external APIs.
+       'Dabigatran (Pradaxa)' → 'dabigatran'
+       'Atorvastatin Calcium Tablets, 40 mg' → 'atorvastatin'
+    """
+    if not name:
+        return ""
+    import re as _re
+    s = _re.sub(r"\s*\([^)]*\)\s*", " ", name)  # drop parentheticals
+    s = s.split(",", 1)[0]                        # drop after first comma
+    # Drop common formulation suffixes
+    for stop in (" Tablets", " Capsules", " Injection", " HCl", " Hydrochloride", " Calcium", " Sodium", " ER", " Extended-Release"):
+        idx = s.lower().find(stop.lower())
+        if idx > 3:
+            s = s[:idx]
+            break
+    return s.strip().lower()
+
+
 async def lookup_compound(name: str) -> dict[str, Any]:
     """Resolve a drug name to PubChem CID + canonical properties.
 
@@ -42,7 +61,8 @@ async def lookup_compound(name: str) -> dict[str, Any]:
     out: dict[str, Any] = {"name": name, "found": False}
     if not name:
         return out
-    q = quote(name.strip())
+    norm = normalize_drug_query(name) or name
+    q = quote(norm.strip())
     # 1. Name → CID
     cid_doc = await _get_json(f"{PUBCHEM}/compound/name/{q}/cids/JSON")
     cids = ((cid_doc or {}).get("IdentifierList") or {}).get("CID") or []

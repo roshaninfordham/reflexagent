@@ -82,22 +82,29 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
     (async () => {
       try {
         const $3Dmol = await load3Dmol();
-        const pdbText = await fetch(data.pdb_url!).then((r) => {
+        let pdbText = await fetch(data.pdb_url!).then((r) => {
           if (!r.ok) throw new Error(`AlphaFold PDB ${r.status}`);
           return r.text();
         });
         if (cancelled || !viewerRef.current) return;
         if (!pdbText || pdbText.length < 100) throw new Error('empty PDB response');
+        // AlphaFold PDBs lack a CRYST1 record. Some 3Dmol.js builds crash
+        // when reading 'symmetries' off the parser. Prepend a unit-cell
+        // CRYST1 so the parser is happy.
+        if (!/^CRYST1/m.test(pdbText)) {
+          pdbText = 'CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\n' + pdbText;
+        }
 
         viewerRef.current.innerHTML = '';
         const v = $3Dmol.createViewer(viewerRef.current, { backgroundColor: '#06101F' });
-        v.addModel(pdbText, 'pdb');
-        // Color by B-factor (AlphaFold stores per-residue pLDDT there).
-        // Use the built-in 'b' scheme + min/max for the pLDDT 0–100 range —
-        // more robust than colorfunc which trips on some browsers.
-        v.setStyle({}, {
-          cartoon: { colorscheme: { prop: 'b', gradient: 'roygb', min: 50, max: 90 } },
-        });
+        try {
+          v.addModel(pdbText, 'pdb', { keepH: true });
+        } catch (modelErr: any) {
+          // last-ditch: try without options
+          v.addModel(pdbText, 'pdb');
+        }
+        // Spectrum color is the safest fallback — readable + can't crash
+        v.setStyle({}, { cartoon: { color: 'spectrum' } });
         v.zoomTo();
         v.render();
         try { v.spin('y', 0.4); } catch {}

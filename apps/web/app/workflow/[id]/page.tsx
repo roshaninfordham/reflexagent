@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
 import AlphaFoldViewer from '../../../components/AlphaFoldViewer';
+import DocumentsPanel from '../../../components/DocumentsPanel';
 import HotspotMap from '../../../components/HotspotMap';
 import InteractionsPanel from '../../../components/InteractionsPanel';
 import MoleculePreview, { isPreviewable } from '../../../components/MoleculePreview';
@@ -75,6 +76,7 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
           {wf?.cohort && wf.cohort.patient_count > 0 && (
             <HotspotMap workflowId={id} />
           )}
+          <DocumentsPanel workflowId={id} />
           <VoiceAgent workflowId={id} />
         </div>
 
