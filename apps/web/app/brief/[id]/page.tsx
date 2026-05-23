@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import MoleculePreview from '../../../components/MoleculePreview';
+import Narrator from '../../../components/Narrator';
 import { api } from '../../../lib/api';
 
 type Workflow = {
@@ -53,15 +55,34 @@ export default function BriefPage({ params }: { params: { id: string } }) {
   }, [id]);
 
   const b = wf?.brief;
+  const narration = useMemo(() => {
+    const out: string[] = [];
+    if (b?.summary) out.push(b.summary);
+    if (b?.findings?.length) {
+      for (const f of b.findings.slice(0, 3)) out.push(f);
+    }
+    if (b?.recommendation) out.push('Recommendation. ' + b.recommendation);
+    if (wf?.substitutes?.candidates?.length) {
+      const top = wf.substitutes.candidates[0];
+      out.push(
+        `Top alternative: ${top.drug_name} targeting ${top.target_protein}, with similarity ${top.target_similarity.toFixed(2)}.`,
+      );
+    }
+    return out;
+  }, [b, wf?.substitutes]);
+
   return (
     <main className="grid-bg min-h-screen">
       <header className="px-6 md:px-10 pt-6 pb-4 flex items-center justify-between">
         <Link href={`/workflow/${id}`} className="text-xs uppercase tracking-widest text-slate-light hover:text-teal-glow">
           ← workflow
         </Link>
-        <Link href="/premium" className="btn btn-primary">
-          Unlock premium sub-brief · $0.50
-        </Link>
+        <div className="flex items-center gap-3">
+          <Narrator workflowId={id} lines={narration} />
+          <Link href="/premium" className="btn btn-primary">
+            Unlock premium sub-brief · $0.50
+          </Link>
+        </div>
       </header>
 
       <article className="max-w-3xl mx-auto px-6 md:px-10 py-6">
@@ -86,6 +107,10 @@ export default function BriefPage({ params }: { params: { id: string } }) {
 
         {b && (
           <>
+            <Section title="Recalled drug · target">
+              <MoleculePreview drugName={b.drug_name} />
+            </Section>
+
             <Section title="Summary">
               <p className="text-ice/90 leading-relaxed">{b.summary}</p>
             </Section>
@@ -121,10 +146,10 @@ export default function BriefPage({ params }: { params: { id: string } }) {
                     <span> · ranked by cosine similarity over {wf.substitutes.embedding_dim}-d protein embeddings.</span>
                   )}
                 </p>
-                <ul className="space-y-3">
+                <ul className="space-y-4">
                   {wf.substitutes.candidates.map((c, i) => (
-                    <li key={i} className="card p-3">
-                      <div className="flex items-center justify-between">
+                    <li key={i} className="card p-4">
+                      <div className="flex items-center justify-between mb-3">
                         <div>
                           <div className="text-ice font-semibold">{c.drug_name}</div>
                           <div className="text-[11px] text-slate-light">
@@ -138,7 +163,8 @@ export default function BriefPage({ params }: { params: { id: string } }) {
                           </div>
                         )}
                       </div>
-                      {c.rationale && <p className="text-xs text-ice/80 mt-2">{c.rationale}</p>}
+                      {c.rationale && <p className="text-xs text-ice/80 mb-3">{c.rationale}</p>}
+                      <MoleculePreview drugName={c.drug_name} size="small" />
                     </li>
                   ))}
                 </ul>
