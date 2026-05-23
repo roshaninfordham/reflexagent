@@ -27,29 +27,34 @@ async def run(workflow_id: UUID, normalized: NormalizedRecall) -> Cohort:
     drug = normalized.normalized_drug
     lots = normalized.lot_numbers or []
 
+    # Fuzzy match: many fixture rows store "Metformin Hcl" while the LLM may
+    # normalize to "Metformin". Use a substring match over the first 6 chars
+    # of the normalized drug so common stems still match.
+    stem = drug.split()[0] if drug else ""
+
     async with trace_span(
         workflow_id,
         agent="cohort",
         target="clickhouse",
         label=f"Affected cohort for {drug}",
     ) as span:
-        span.set_input({"drug": drug, "lots": lots})
+        span.set_input({"drug": drug, "stem": stem, "lots": lots})
         try:
             if lots:
                 sql = """
                     SELECT patient_id, age, sex, conditions
                     FROM patients
-                    WHERE has(drugs_taken, %(drug)s)
+                    WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
                       AND hasAny(lots_dispensed, %(lots)s)
                 """
-                params = {"drug": drug, "lots": lots}
+                params = {"stem": stem, "lots": lots}
             else:
                 sql = """
                     SELECT patient_id, age, sex, conditions
                     FROM patients
-                    WHERE has(drugs_taken, %(drug)s)
+                    WHERE arrayExists(d -> positionCaseInsensitive(d, %(stem)s) > 0, drugs_taken)
                 """
-                params = {"drug": drug}
+                params = {"stem": stem}
             rows = clickhouse_client.query_rows(sql, params)
         except Exception as e:  # noqa: BLE001
             log.warning("cohort SQL failed: %s", e)

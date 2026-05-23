@@ -32,19 +32,22 @@ async def run(workflow_id: UUID, payload: TriggerPayload) -> NormalizedRecall:
     ) as span:
         span.set_input(payload.model_dump(mode="json"))
 
+        # Python-side normalization is usually sufficient. Only invoke the LLM
+        # if the drug name has odd characters that suggest OCR or fax noise.
         normalized = drug_input.strip().title()
         drug_class = ""
-        try:
-            out = await reason_json(
-                SYSTEM,
-                user=f"Drug: {drug_input!r}",
-                schema=_NormOut,
-                max_tokens=200,
-            )
-            normalized = out.normalized_drug or normalized
-            drug_class = out.drug_class
-        except Exception as e:  # noqa: BLE001
-            log.warning("inbound normalization fell back: %s", e)
+        if any(ch in drug_input for ch in ["#", "  ", "Rx#"]) and len(drug_input) > 25:
+            try:
+                out = await reason_json(
+                    SYSTEM,
+                    user=f"Drug: {drug_input!r}",
+                    schema=_NormOut,
+                    max_tokens=200,
+                )
+                normalized = out.normalized_drug or normalized
+                drug_class = out.drug_class
+            except Exception as e:  # noqa: BLE001
+                log.warning("inbound normalization fell back: %s", e)
 
         # Dedup hint (informational only — we still run; orchestrator records workflow row)
         try:

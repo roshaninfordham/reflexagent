@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # Reasoning provider — defaults to NVIDIA NIM (OpenAI-compatible).
     reasoning_provider: str = Field(default="nvidia", alias="REASONING_PROVIDER")  # 'nvidia' | 'anthropic'
     nvidia_api_key: str = Field(default="", alias="NVIDIA_API_KEY")
+    # Optional separate key for vision (NIM may issue per-model keys).
+    nvidia_vision_api_key: str = Field(default="", alias="NVIDIA_VISION_API_KEY")
     nvidia_base_url: str = Field(
         default="https://integrate.api.nvidia.com/v1", alias="NVIDIA_BASE_URL"
     )
