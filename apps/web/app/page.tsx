@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ActivityFeed from '../components/ActivityFeed';
+import HeroProtein from '../components/HeroProtein';
 import LaunchDemo from '../components/LaunchDemo';
 import MonitorStatus from '../components/MonitorStatus';
 import RecentWorkflows from '../components/RecentWorkflows';
@@ -55,21 +56,29 @@ export default function HomePage() {
       </header>
 
       {/* Hero */}
-      <section className="px-6 md:px-10 pt-10 pb-8 max-w-6xl mx-auto">
-        <div className="inline-block text-[10px] uppercase tracking-widest text-teal-glow border border-teal/30 rounded-full px-2.5 py-1">
-          Live · 11 agents · 7 sponsors · 0 manual triggers required
+      <section className="px-6 md:px-10 pt-10 pb-8 max-w-6xl mx-auto grid lg:grid-cols-5 gap-8 items-center">
+        <div className="lg:col-span-3">
+          <div className="inline-block text-[10px] uppercase tracking-widest text-teal-glow border border-teal/30 rounded-full px-2.5 py-1">
+            Live · 11 agents · 7 sponsors · 0 manual triggers required
+          </div>
+          <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-[1.02] mt-4 max-w-4xl glow-text">
+            FDA's missing nervous system.
+          </h1>
+          <p className="mt-5 text-base md:text-lg text-slate-light max-w-2xl leading-relaxed">
+            Drug recalls in the U.S. still run on faxes. Reflex watches the open web continuously. When a novel recall hits the wire, an 11-agent swarm verifies it across primary sources, runs an <strong className="text-ice">adversarial counter-evidence pass</strong>, identifies affected patients, drafts clinician communications, and ranks therapeutic alternatives using <strong className="text-ice">NVIDIA BioNeMo protein embeddings</strong> — in seconds.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <LaunchDemo label="Launch live demo" />
+            <a href="/docs/pitch/deck.html" target="_blank" className="btn">View 3-min pitch deck</a>
+            <Link href="/pricing" className="btn">See pricing & cost</Link>
+            <a href="https://github.com/roshaninfordham/reflexagent" target="_blank" className="btn">Source on GitHub</a>
+          </div>
         </div>
-        <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-[1.02] mt-4 max-w-4xl glow-text">
-          FDA's missing nervous system.
-        </h1>
-        <p className="mt-5 text-base md:text-lg text-slate-light max-w-2xl leading-relaxed">
-          Drug recalls in the U.S. still run on faxes. Reflex watches the open web continuously. When a novel recall hits the wire, an 11-agent swarm verifies it across primary sources, runs an <strong className="text-ice">adversarial counter-evidence pass</strong>, identifies affected patients, drafts clinician communications, and ranks therapeutic alternatives using <strong className="text-ice">NVIDIA BioNeMo protein embeddings</strong> — in seconds.
-        </p>
-        <div className="mt-7 flex flex-wrap gap-3">
-          <LaunchDemo label="Launch live demo" />
-          <a href="/docs/pitch/deck.html" target="_blank" className="btn">View 3-min pitch deck</a>
-          <Link href="/pricing" className="btn">See pricing & cost</Link>
-          <a href="https://github.com/roshaninfordham/reflexagent" target="_blank" className="btn">Source on GitHub</a>
+        <div className="lg:col-span-2">
+          <HeroProtein />
+          <div className="text-[10px] text-slate-light mt-2 text-center">
+            Live 3D protein cartoons of common drug targets · cycles every 12s · rendered from RCSB PDB
+          </div>
         </div>
       </section>
 

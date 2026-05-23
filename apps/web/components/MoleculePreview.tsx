@@ -36,6 +36,20 @@ function pdbFor(drug: string) {
   return null;
 }
 
+const GENERIC_DRUG_HINTS = [
+  'example drug', 'unknown', 'tbd', 'placeholder',
+  'sodium chloride', 'tpn bag', 'compound', 'injection usp', 'irrigation',
+];
+
+export function isPreviewable(drug: string): boolean {
+  if (!drug) return false;
+  const k = drug.toLowerCase();
+  if (GENERIC_DRUG_HINTS.some((g) => k.includes(g))) return false;
+  // Long product-description names with measurement units rarely match PubChem either
+  if (k.length > 80 || /\d+\s*(mg|ml|mcg|g|iu)\b/.test(k)) return false;
+  return true;
+}
+
 function pubchemUrl(name: string): string {
   // PubChem PUG REST. Returns PNG of the 2D structure.
   const q = encodeURIComponent(name.replace(/\s+/g, ' ').trim());

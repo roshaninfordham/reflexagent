@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
-import MoleculePreview from '../../../components/MoleculePreview';
+import MoleculePreview, { isPreviewable } from '../../../components/MoleculePreview';
 import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
 
@@ -139,7 +139,7 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
           )}
 
           {/* Live drug + target preview — surfaces the moment Substitute completes */}
-          {wf?.normalized?.normalized_drug && (
+          {wf?.normalized?.normalized_drug && isPreviewable(wf.normalized.normalized_drug) && (
             <Card title="Recalled drug · target preview">
               <MoleculePreview drugName={wf.normalized.normalized_drug} size="small" />
               <div className="text-[10px] text-slate-light mt-2">
