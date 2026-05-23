@@ -7,7 +7,7 @@ This document goes one layer below the [README](./README.md) to explain how ever
 ## 1. Runtime topology
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart TB
     subgraph BROWSER[Browser]
         UI[Next.js 14 App Router<br/>localhost:3000]
@@ -65,7 +65,7 @@ The whole server is a single Python process, single asyncio loop. The frontend i
 ## 2. The trigger paths
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 stateDiagram-v2
     [*] --> Autonomous: OpenFDA poll (60s)
     [*] --> Manual: POST /api/v1/trigger
@@ -94,7 +94,7 @@ stateDiagram-v2
 ## 3. The 11-agent swarm (sequence)
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 sequenceDiagram
     autonumber
     participant O as Orchestrator
@@ -141,7 +141,7 @@ Phases A and B are `asyncio.gather`. Verification is the critical-path bottlenec
 ## 4. Reasoning engine
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef agent fill:#0D9488,stroke:#5EEAD4,color:#06101F
     classDef tool fill:#1e3a5f,stroke:#5EEAD4,color:#E0F2FE
@@ -191,7 +191,7 @@ Every agent imports `reason`/`reason_json`/`reason_vision` from one file. That f
 ## 5. NVIDIA BioNeMo Substitute path
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 sequenceDiagram
     autonumber
     participant S as Substitute Agent
@@ -227,7 +227,7 @@ The same protein structures are then rendered in the UI via `MoleculePreview` us
 ## 6. ClickHouse schema
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 erDiagram
     adverse_events {
         UUID event_id PK
@@ -301,7 +301,7 @@ DDL is at `infra/clickhouse/init.sql`, idempotent via `CREATE TABLE IF NOT EXIST
 ## 7. Frontend — Canvas Agent Theater
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart TB
     classDef state fill:#1e3a5f,stroke:#5EEAD4,color:#E0F2FE
     classDef ui fill:#0D9488,stroke:#5EEAD4,color:#06101F
@@ -338,7 +338,7 @@ This is the difference between 60fps butter and laggy stutter when SSE bursts ar
 ## 8. x402 payment flow
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 sequenceDiagram
     autonumber
     participant U as UI
@@ -374,7 +374,7 @@ Both paths log to `x402_transactions` so the ClickHouse revenue ledger reflects 
 ## 9. Observability
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef src fill:#0D9488,stroke:#5EEAD4,color:#06101F
     classDef sink fill:#632ca6,stroke:#a78bfa,color:#fff

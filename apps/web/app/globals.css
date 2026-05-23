@@ -3,47 +3,85 @@
 @tailwind utilities;
 
 :root {
+  --bg-1: #06101F;
+  --bg-2: #0A1628;
+  --bg-card: rgba(10, 22, 40, 0.7);
+  --bg-ink: rgba(6, 16, 31, 0.6);
+  --text-1: #E0F2FE;
+  --text-2: #94A3B8;
+  --text-muted: #475569;
+  --teal: #14B8A6;
+  --teal-glow: #5EEAD4;
+  --teal-dark: #0D9488;
+  --ok: #10B981;
+  --warn: #F59E0B;
+  --alert: #EF4444;
+  --border-soft: rgba(94, 234, 212, 0.15);
+  --border-strong: rgba(94, 234, 212, 0.3);
+  --grid: rgba(94, 234, 212, 0.05);
   color-scheme: dark;
 }
 
+html[data-theme='light'] {
+  --bg-1: #FFFFFF;
+  --bg-2: #F8FAFC;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-ink: rgba(248, 250, 252, 0.85);
+  --text-1: #0F172A;
+  --text-2: #475569;
+  --text-muted: #94A3B8;
+  --teal: #0D9488;
+  --teal-glow: #0F766E;
+  --teal-dark: #134E4A;
+  --ok: #047857;
+  --warn: #B45309;
+  --alert: #B91C1C;
+  --border-soft: rgba(13, 148, 136, 0.18);
+  --border-strong: rgba(13, 148, 136, 0.35);
+  --grid: rgba(13, 148, 136, 0.06);
+  color-scheme: light;
+}
+
 html, body {
-  background: linear-gradient(180deg, #06101F 0%, #0A1628 100%);
-  color: #E0F2FE;
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  color: var(--text-1);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100%;
+  transition: background 200ms ease, color 200ms ease;
 }
 
 .grid-bg {
   background-image:
     radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.08), transparent 50%),
-    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: auto, 32px 32px, 32px 32px;
 }
 
 .btn {
   @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition;
-  border: 1px solid rgba(94, 234, 212, 0.4);
-  background: rgba(20, 184, 166, 0.12);
-  color: #5EEAD4;
+  border: 1px solid var(--border-strong);
+  background: rgba(20, 184, 166, 0.10);
+  color: var(--teal-glow);
 }
 .btn:hover {
   background: rgba(20, 184, 166, 0.22);
-  box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.6);
+  box-shadow: 0 0 0 1px var(--border-strong);
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primary {
-  background: linear-gradient(135deg, #14B8A6, #0D9488);
+  background: linear-gradient(135deg, var(--teal), var(--teal-dark));
   color: #06101F;
   border: 0;
 }
-.btn-primary:hover { background: linear-gradient(135deg, #5EEAD4, #14B8A6); }
+html[data-theme='light'] .btn-primary { color: #FFFFFF; }
+.btn-primary:hover { background: linear-gradient(135deg, var(--teal-glow), var(--teal)); }
 
 .card {
-  background: rgba(10, 22, 40, 0.7);
-  border: 1px solid rgba(94, 234, 212, 0.15);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   backdrop-filter: blur(6px);
   border-radius: 12px;
 }
@@ -58,3 +96,13 @@ html, body {
   background: rgba(94, 234, 212, 0.2);
   border-radius: 3px;
 }
+
+/* Tailwind color aliases now drive CSS-var values for components that reference them directly */
+.text-ice { color: var(--text-1); }
+.text-slate-light { color: var(--text-2); }
+.text-teal-glow { color: var(--teal-glow); }
+.bg-ink { background: var(--bg-ink); }
+.border-teal\/10 { border-color: var(--border-soft); }
+.border-teal\/15 { border-color: var(--border-soft); }
+.border-teal\/20 { border-color: var(--border-soft); }
+.border-teal\/30 { border-color: var(--border-strong); }

@@ -12,7 +12,7 @@ Reflex's contribution is a multi-agent verification swarm with an **active count
 ## What you see in 90 seconds
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 sequenceDiagram
     autonumber
     actor Stage as Stage / Presenter
@@ -60,7 +60,7 @@ The autonomous monitor fires the swarm **without a click**. The Canvas Agent The
 ## Sponsor stack
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef sponsor fill:#0D9488,stroke:#5EEAD4,color:#06101F,stroke-width:1px
     classDef other fill:#1e293b,stroke:#94A3B8,color:#E0F2FE,stroke-width:1px
@@ -102,7 +102,7 @@ flowchart LR
 ## System architecture
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 graph TB
     subgraph TRIGGERS[Triggers — any of these starts a workflow]
         T1[Autonomous Monitor<br/>OpenFDA poll, 60s]
@@ -184,7 +184,7 @@ graph TB
 ## The 11 agents
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef ing fill:#0e7490,stroke:#5EEAD4,color:#E0F2FE
     classDef dec fill:#0D9488,stroke:#5EEAD4,color:#06101F
@@ -233,7 +233,7 @@ Each agent is one Python file in `apps/api/agents/`. Each has a precise role + r
 ## User personas — three real stories
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 journey
     title Sarah — Director of Pharmacovigilance, mid-size biopharma
     section Before Reflex
@@ -247,7 +247,7 @@ journey
 ```
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 journey
     title David — P&T Chair, 600-bed academic medical center
     section Before Reflex
@@ -264,7 +264,7 @@ journey
 ```
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 journey
     title Maria — Independent rural pharmacist
     section Before Reflex
@@ -377,7 +377,7 @@ Open `http://localhost:3000`. The autonomous monitor is already polling OpenFDA 
 ## Security
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef ok fill:#10B981,stroke:#5EEAD4,color:#06101F
     classDef warn fill:#F59E0B,stroke:#fef3c7,color:#06101F
@@ -406,7 +406,7 @@ What Reflex doesn't claim:
 ## Observability
 
 ```mermaid
-%%{init: {'theme':'dark', 'themeVariables':{'fontFamily':'Inter, system-ui'}}}%%
+
 flowchart LR
     classDef dd fill:#632ca6,stroke:#a78bfa,color:#fff
     classDef ch fill:#fcdc00,stroke:#94A3B8,color:#06101F

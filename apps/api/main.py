@@ -319,6 +319,38 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
     }
 
 
+# ----- Cost / pricing -----
+
+
+@app.get("/api/v1/cost")
+async def cost_summary():
+    from apps.api.cost import tracker, PUBLIC_TIERS, PRICES
+    return {
+        "usage": tracker.summary(),
+        "prices_internal_cents": PRICES,
+        "public_tiers": PUBLIC_TIERS,
+        "rate_limit_strategy": {
+            "nim_semaphore_max_inflight": 1,
+            "nim_keys_pooled": 2,
+            "monitor_poll_seconds": get_settings().monitor_poll_interval_seconds,
+            "nimble_retries": 3,
+            "openai_sdk_max_retries": 2,
+            "graceful_fallbacks": (
+                "Every LLM-dependent agent has a deterministic fallback. "
+                "Workflows always complete even under sustained 429s."
+            ),
+        },
+        "infra_costs_per_month_estimate_cents": {
+            "clickhouse_cloud_free_tier": 0,
+            "senso_free_tier": 0,
+            "nvidia_bionemo_free": 0,
+            "datadog_llm_obs_free_tier": 0,
+            "nimble_pay_per_use": "metered",
+            "nim_llama_3_3_70b_pay_per_use": "metered",
+        },
+    }
+
+
 # ----- Outbox feed -----
 
 

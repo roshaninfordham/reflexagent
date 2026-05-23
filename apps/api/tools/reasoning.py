@@ -96,15 +96,27 @@ async def reason(
     key = await _pick_text_key()
     async with _sem:
         client = _openai_client_with(key)
-        resp = await client.chat.completions.create(
-            model=_model_text(),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        )
+        try:
+            resp = await client.chat.completions.create(
+                model=_model_text(),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            )
+        except Exception as e:
+            from apps.api.cost import tracker
+            if "429" in str(e) or "Too Many" in str(e):
+                tracker.record_rate_limit()
+            raise
+        try:
+            from apps.api.cost import tracker
+            u = getattr(resp, "usage", None)
+            tracker.record_llm("nim_text", getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
+        except Exception:
+            pass
         return (resp.choices[0].message.content or "").strip()
 
 
