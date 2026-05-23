@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from apps.api import monitor as monitor_module
 from apps.api.events import router as events_router
 from apps.api.orchestrator import get_result, list_recent, orchestrate
+from apps.api import wallet as burner
 from apps.api.payments import (
     log_payment,
     mint_dev_token,
@@ -250,8 +251,30 @@ class SubBriefRequest(BaseModel):
 async def premium_subbrief(req: SubBriefRequest, request: Request):
     x_payment = request.headers.get("X-PAYMENT") or request.headers.get("x-payment")
     ok, payer = await verify_x402_payment(x_payment)
+    settlement: dict | None = None
+
+    if not ok:
+        # No (or invalid) X-PAYMENT. If the burner wallet is funded, the
+        # backend ACTS AS THE PAYER and submits a real Base Sepolia tx,
+        # then proceeds. This is the agent-to-agent payment story.
+        try:
+            import asyncio as _asyncio
+            s = get_settings()
+            wallet_info = burner.info()
+            if wallet_info["usdc_balance_micro"] >= int(s.x402_price_usd * 10**6) and wallet_info["eth_balance_wei"] > 0:
+                pay_to = s.x402_pay_to_address or burner.get_account().address
+                settlement = await _asyncio.to_thread(burner.send_usdc, s.x402_price_usd, pay_to)
+                receipt = await _asyncio.to_thread(burner.wait_for_receipt, settlement["tx_hash"], 12)
+                settlement["receipt"] = receipt
+                payer = settlement["from"]
+                ok = True
+        except Exception as e:  # noqa: BLE001
+            log.warning("auto-settle failed: %s", e)
+
     if not ok:
         challenge = x402_challenge()
+        # Surface the burner wallet so the user knows where to send funds.
+        challenge["fund_burner"] = burner.info()
         return JSONResponse(
             status_code=402,
             content=challenge,
@@ -286,8 +309,14 @@ async def premium_subbrief(req: SubBriefRequest, request: Request):
         payer=payer,
         amount_usd=s.x402_price_usd,
         endpoint="/api/v1/premium-subbrief",
+        settlement_tx=(settlement or {}).get("tx_hash", ""),
     )
-    return {"answer": answer, "payer": payer, "paid_usd": s.x402_price_usd}
+    return {
+        "answer": answer,
+        "payer": payer,
+        "paid_usd": s.x402_price_usd,
+        "settlement": settlement,  # null if JWT path; populated for real chain settlement
+    }
 
 
 @app.get("/api/v1/payments/dev-token")
@@ -299,3 +328,39 @@ async def dev_token():
         f'{{"scheme":"jwt-stub","token":"{token}"}}'.encode("utf-8")
     ).decode("utf-8")
     return {"x_payment_header": header, "token": token}
+
+
+# ----- Real Base Sepolia wallet (burner, testnet, zero monetary value) -----
+
+
+@app.get("/api/v1/payments/wallet")
+async def wallet_info():
+    return burner.info()
+
+
+class SettleRequest(BaseModel):
+    amount_usd: float | None = None
+    to: str | None = None
+
+
+@app.post("/api/v1/payments/settle")
+async def wallet_settle(req: SettleRequest):
+    """Sign and broadcast a real Base Sepolia USDC transfer from the burner wallet.
+
+    Returns the tx hash + BaseScan link + (best-effort) on-chain receipt.
+    """
+    import asyncio as _asyncio
+
+    s = get_settings()
+    amount = req.amount_usd or s.x402_price_usd
+    to_addr = req.to or s.x402_pay_to_address or burner.get_account().address  # self-transfer if no payee configured
+
+    try:
+        result = await _asyncio.to_thread(burner.send_usdc, amount, to_addr)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Poll receipt in background-ish (short wait, then return).
+    receipt = await _asyncio.to_thread(burner.wait_for_receipt, result["tx_hash"], 18)
+    result["receipt"] = receipt
+    return result
