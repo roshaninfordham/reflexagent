@@ -19,11 +19,13 @@ async def search(term: str, page_size: int = 8) -> list[dict[str, Any]]:
     """Search for trials whose intervention matches the drug name."""
     if not term:
         return []
+    # `query.term` is the broad full-text search — covers intervention,
+    # condition, sponsor, free-text. Much higher recall than `query.intr`
+    # which expects exact intervention name matches.
     params = {
-        "query.intr": term,
+        "query.term": term,
         "pageSize": page_size,
         "format": "json",
-        "fields": "NCTId,BriefTitle,OverallStatus,Phase,Conditions,Interventions,StartDate,CompletionDate,LeadSponsorName",
     }
     try:
         async with httpx.AsyncClient(timeout=15) as client:
