@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: linear-gradient(180deg, #06101F 0%, #0A1628 100%);
+  color: #E0F2FE;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+.grid-bg {
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.08), transparent 50%),
+    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition;
+  border: 1px solid rgba(94, 234, 212, 0.4);
+  background: rgba(20, 184, 166, 0.12);
+  color: #5EEAD4;
+}
+.btn:hover {
+  background: rgba(20, 184, 166, 0.22);
+  box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.6);
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #14B8A6, #0D9488);
+  color: #06101F;
+  border: 0;
+}
+.btn-primary:hover { background: linear-gradient(135deg, #5EEAD4, #14B8A6); }
+
+.card {
+  background: rgba(10, 22, 40, 0.7);
+  border: 1px solid rgba(94, 234, 212, 0.15);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+}
+
+.glow-text {
+  text-shadow: 0 0 24px rgba(94, 234, 212, 0.5);
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(94, 234, 212, 0.2);
+  border-radius: 3px;
+}
