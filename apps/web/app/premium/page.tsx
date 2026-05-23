@@ -18,7 +18,12 @@ type WalletInfo = {
   eth_balance_wei: number;
   usdc_balance_micro: number;
   usdc_decimals: number;
-  faucets: { eth: string; usdc: string; instructions: string };
+  faucets: {
+    eth_primary: string;
+    eth_fallbacks: string[];
+    usdc: string;
+    instructions: string;
+  };
 };
 
 type Settlement = {
@@ -182,18 +187,30 @@ export default function PremiumPage() {
               {!canSettle && (
                 <div className="mt-3 text-xs bg-warn/10 border border-warn/30 rounded p-3">
                   <div className="text-warn font-semibold mb-1.5">Fund the burner once (free, takes ~30 seconds)</div>
-                  <ol className="text-ice/90 space-y-1.5 ml-4 list-decimal">
+                  <ol className="text-ice/90 space-y-2 ml-4 list-decimal">
                     <li>
                       <a href={wallet.faucets.usdc} target="_blank" className="text-teal-glow hover:underline">
                         Circle USDC faucet ↗
                       </a>{' '}
-                      → paste the address above → choose "Base Sepolia" → request 10 USDC.
+                      → paste the address → choose <strong>Base Sepolia</strong> → request 10 USDC.
                     </li>
                     <li>
-                      <a href={wallet.faucets.eth} target="_blank" className="text-teal-glow hover:underline">
-                        Coinbase Base Sepolia ETH faucet ↗
-                      </a>{' '}
-                      → paste the address → request 0.1 ETH (for gas).
+                      <span className="font-medium">Get test ETH for gas — pick any one:</span>
+                      <ul className="mt-1 ml-3 space-y-0.5 list-disc text-ice/80">
+                        <li>
+                          <a href={wallet.faucets.eth_primary} target="_blank" className="text-teal-glow hover:underline">
+                            Coinbase CDP faucet ↗
+                          </a>{' '}
+                          (official, needs Coinbase login)
+                        </li>
+                        {wallet.faucets.eth_fallbacks?.map((url) => (
+                          <li key={url}>
+                            <a href={url} target="_blank" className="text-teal-glow hover:underline">
+                              {url.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   </ol>
                 </div>

@@ -9,6 +9,7 @@ This is what makes Reflex genuinely autonomous — no user action required.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -63,6 +64,8 @@ def _already_seen(external_id: str) -> bool:
 
 
 def _mark_seen(external_id: str, source: str = "openfda") -> None:
+    if not external_id:
+        return
     try:
         clickhouse_client.insert(
             "monitor_seen",
@@ -70,6 +73,19 @@ def _mark_seen(external_id: str, source: str = "openfda") -> None:
         )
     except Exception as e:  # noqa: BLE001
         log.warning("monitor_seen insert failed: %s", e)
+
+
+def _content_id(item: dict[str, Any]) -> str:
+    """Stable hash of the recall content — fallback when OpenFDA omits recall_number."""
+    key = "|".join(
+        [
+            (item.get("product_description") or "")[:200],
+            (item.get("recalling_firm") or "")[:80],
+            (item.get("code_info") or "")[:200],
+            (item.get("reason_for_recall") or "")[:200],
+        ]
+    )
+    return "ch-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
 
 
 async def _poll_openfda(client: httpx.AsyncClient, limit: int = 15) -> list[dict[str, Any]]:
@@ -180,15 +196,23 @@ async def _loop() -> None:
 
                 novel = []
                 for item in items:
-                    rid = item.get("recall_number") or item.get("event_id") or ""
+                    rid = (
+                        item.get("recall_number")
+                        or item.get("event_id")
+                        or _content_id(item)
+                    )
                     if not rid or _already_seen(rid):
                         continue
+                    item["_dedup_id"] = rid
                     novel.append(item)
 
                 # Process up to 2 novel signals per tick (covers any injected one + 1 organic).
                 for item in novel[:2]:
                     payload = _to_trigger(item)
-                    _mark_seen(payload.external_id or "")
+                    rid = item.get("_dedup_id") or payload.external_id or _content_id(item)
+                    if not payload.external_id:
+                        payload.external_id = rid
+                    _mark_seen(rid)
                     _status.novel_triggered += 1
                     _status.last_novel_id = payload.external_id
                     _status.recent_novels.insert(
@@ -205,7 +229,7 @@ async def _loop() -> None:
 
                 # Mark remaining novel as seen so we don't reprocess them next tick.
                 for item in novel[2:]:
-                    rid = item.get("recall_number") or ""
+                    rid = item.get("_dedup_id") or item.get("recall_number") or _content_id(item)
                     if rid:
                         _mark_seen(rid)
 

@@ -90,12 +90,17 @@ def info() -> dict[str, Any]:
         "usdc_balance_micro": usdc_balance_micro(acct.address),
         "usdc_decimals": USDC_DECIMALS,
         "faucets": {
-            "eth": "https://www.coinbase.com/faucets/base-sepolia-faucet",
+            "eth_primary": "https://portal.cdp.coinbase.com/products/faucet",
+            "eth_fallbacks": [
+                "https://www.alchemy.com/faucets/base-sepolia",
+                "https://bwarelabs.com/faucets/base-sepolia",
+                "https://learnweb3.io/faucets/base_sepolia/",
+            ],
             "usdc": "https://faucet.circle.com",
             "instructions": (
-                "1. Open the USDC faucet, paste the wallet address, choose 'Base Sepolia', request 10 USDC. "
-                "2. Open the ETH faucet to get a tiny amount of test ETH for gas. "
-                "Both are free and instant."
+                "1. Open the Circle USDC faucet, paste the wallet address, choose 'Base Sepolia', request 10 USDC. "
+                "2. Open any of the Base Sepolia ETH faucets, paste the address, request a small amount of ETH for gas. "
+                "All are free; some require a free signup (Alchemy, LearnWeb3) but Bware Labs is open."
             ),
         },
     }
