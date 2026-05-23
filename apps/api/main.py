@@ -371,54 +371,174 @@ def _build_chat_context(workflow_id: UUID | None) -> str:
 
 
 CHAT_SYSTEM = """ROLE
-You are Reflex's voice operator — the conversational front-end to a 10-agent
-pharmacovigilance swarm. The user is a pharmacy director, P&T chair, or
-investigative journalist asking questions about a verified safety brief.
+You are Reflex's voice operator AND action agent. You are the conversational
+front-end to an 11-agent pharmacovigilance swarm, AND you have tools to take
+real action on behalf of the user (a pharmacy director, P&T chair, or
+healthcare journalist).
+
+DEFAULT POSTURE: ACT, DON'T REFUSE
+When the user gives any directive verb — "send the memo", "notify the
+clinicians", "publish", "do that", "take next steps", "alert everyone",
+"run a sub-brief", "show me", "open the brief", "trigger a new workflow",
+"monitor X" — CALL THE APPROPRIATE TOOL. Do not say "not in scope" for
+anything that maps to a tool you have. The tools cover real pharmacy ops.
+
+TOOLS
+- trigger_new_workflow: start a new analysis for a different drug
+- send_pharmacist_memo, send_clinician_alert, send_patient_letters: actually
+  dispatch the drafted communications (logged in the outbox, recipient
+  counts returned)
+- publish_brief: republish to cited.md
+- run_premium_subbrief: pay $0.50 and run a deeper analysis (subgroup
+  slice, formulary alternatives, etc.) — this performs a REAL x402
+  settlement (signed or on-chain)
+- list_recent_recalls: enumerate what's been processed
+- navigate_to_brief: open the brief page in the user's browser
+- get_wallet_status: check the burner wallet balance
+
+CHAINING
+Multiple tools per turn is fine. "Take next steps" almost always means:
+send_pharmacist_memo + send_clinician_alert + send_patient_letters (in
+that order). Acknowledge what you did in one sentence afterwards.
 
 VOICE STYLE
-- Speak in short sentences (≤20 words).
-- One idea per sentence. No bulleted lists when speaking aloud.
-- Numerals stated as words when natural ("eighteen patients" reads better
-  out loud than "18 patients" — but exact counts may stay as digits).
-- No hedging filler like "I think" or "perhaps".
-- Always lead with the answer; then one sentence of context.
+- After tool calls, speak in one or two short sentences confirming what
+  was done and offering the next logical action.
+- Lead with the action verb.
+- No bulleted lists when speaking; use prose.
 
 GROUNDING
-- Use only the supplied workflow context. If the user asks something not
-  in scope, say so in one sentence and offer what you CAN answer.
+- Use the supplied workflow context for facts.
 - Never invent FDA classifications, citation URLs, or cohort numbers.
 
-WHEN YOU LACK INFORMATION
-- "I don't have that yet" + offer to trigger a new workflow.
+WHEN A TOOL FAILS
+- If a tool returns an error, say what failed in one sentence and offer a
+  workable next step (e.g. "the brief isn't drafted yet — the swarm is
+  still on the Verify step").
+"""
 
-ACTIONABLE SUGGESTIONS
-- When asked "what should we do", lean on the Routing and Comms outputs:
-  pharmacist memo, clinician alert, patient letter — refer to them by name.
-- When asked about alternatives, refer to the BioNeMo Substitute agent's
-  ranked list explicitly ("the Substitute agent ranks Sitagliptin first
-  with similarity 0.93")."""
+
+async def _run_agent_loop(
+    user_message: str, workflow_id: UUID | None, history: list[ChatTurn]
+) -> dict[str, Any]:
+    """Multi-turn tool-calling loop. Returns {answer, actions: [tool_call_records]}."""
+    import json
+    from apps.api import agent_tools
+    from apps.api.tools.reasoning import reason_with_tools, ReasoningUnavailable
+
+    ctx = _build_chat_context(workflow_id)
+    system_blocks = [CHAT_SYSTEM]
+    if ctx:
+        system_blocks.append(f"WORKFLOW CONTEXT (use as source of truth):\n{ctx}")
+    if workflow_id:
+        system_blocks.append(
+            f"DEFAULT WORKFLOW ID (use this if the user does not specify): {workflow_id}"
+        )
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": "\n\n".join(system_blocks)}
+    ]
+    for t in (history or [])[-8:]:
+        messages.append({"role": t.role, "content": t.content})
+    messages.append({"role": "user", "content": user_message})
+
+    actions: list[dict[str, Any]] = []
+    client_hints: list[dict[str, Any]] = []
+
+    for _ in range(5):  # max 5 tool-call rounds
+        try:
+            msg = await reason_with_tools(
+                messages, agent_tools.TOOL_SPECS, max_tokens=800
+            )
+        except ReasoningUnavailable:
+            return {
+                "answer": "Reasoning engine is offline. Set NVIDIA_API_KEY to enable.",
+                "actions": actions,
+                "client_hints": client_hints,
+            }
+        except Exception as e:  # noqa: BLE001
+            log.warning("agent loop NIM call failed: %s", e)
+            return {
+                "answer": "I had trouble reaching the reasoning engine. Try again in a moment.",
+                "actions": actions,
+                "client_hints": client_hints,
+            }
+
+        tool_calls = getattr(msg, "tool_calls", None) or []
+        if not tool_calls:
+            final = (getattr(msg, "content", None) or "").strip()
+            return {"answer": final, "actions": actions, "client_hints": client_hints}
+
+        # Record the assistant's tool-call message so the loop is well-formed.
+        messages.append(
+            {
+                "role": "assistant",
+                "content": getattr(msg, "content", "") or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments or "{}",
+                        },
+                    }
+                    for tc in tool_calls
+                ],
+            }
+        )
+
+        # Execute each tool call and feed results back.
+        for tc in tool_calls:
+            try:
+                args = json.loads(tc.function.arguments or "{}")
+            except Exception:
+                args = {}
+            # Inject the default workflow_id if one was implied and the tool needs it.
+            if (
+                "workflow_id" in (tc.function.name or "")
+                or tc.function.name in {
+                    "send_pharmacist_memo",
+                    "send_clinician_alert",
+                    "send_patient_letters",
+                    "publish_brief",
+                    "run_premium_subbrief",
+                    "navigate_to_brief",
+                }
+            ) and not args.get("workflow_id"):
+                if workflow_id:
+                    args["workflow_id"] = str(workflow_id)
+
+            result = await agent_tools.execute(tc.function.name, args)
+            actions.append(
+                {
+                    "name": tc.function.name,
+                    "args": args,
+                    "summary": result.get("summary", ""),
+                    "result": {k: v for k, v in result.items() if k != "client_hint"},
+                }
+            )
+            if result.get("client_hint"):
+                client_hints.append(result["client_hint"])
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": json.dumps(result, default=str)[:4000],
+                }
+            )
+
+    return {
+        "answer": "I ran out of tool-call rounds without a final summary.",
+        "actions": actions,
+        "client_hints": client_hints,
+    }
 
 
 @app.post("/api/v1/chat")
 async def chat(req: ChatRequest):
-    ctx = _build_chat_context(req.workflow_id)
-    history_text = "\n".join(
-        f"{t.role.upper()}: {t.content}" for t in (req.history or [])[-8:]
-    )
-    user_block = (
-        (f"Workflow context:\n{ctx}\n\n" if ctx else "")
-        + (f"Conversation so far:\n{history_text}\n\n" if history_text else "")
-        + f"User: {req.message}"
-    )
-    try:
-        answer = await reason(CHAT_SYSTEM, user_block, max_tokens=400)
-    except Exception as e:  # noqa: BLE001
-        log.warning("chat fallback: %s", e)
-        answer = (
-            "Reasoning engine is rate-limited. The active brief is on screen; "
-            "try again in a moment."
-        )
-    return {"answer": answer}
+    result = await _run_agent_loop(req.message, req.workflow_id, req.history or [])
+    return result
 
 
 @app.get("/api/v1/payments/dev-token")

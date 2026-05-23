@@ -108,6 +108,31 @@ async def reason(
         return (resp.choices[0].message.content or "").strip()
 
 
+async def reason_with_tools(
+    messages: list[dict],
+    tools: list[dict],
+    *,
+    max_tokens: int = 800,
+    temperature: float = 0.2,
+) -> Any:
+    """Tool-calling round-trip. Returns the raw `chat.completion.choice.message` object
+    so the caller can inspect both `content` and `tool_calls`."""
+    if not _have_key():
+        raise ReasoningUnavailable("No reasoning provider key configured")
+    key = await _pick_text_key()
+    async with _sem:
+        client = _openai_client_with(key)
+        resp = await client.chat.completions.create(
+            model=_model_text(),
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            tool_choice="auto",
+            messages=messages,
+        )
+        return resp.choices[0].message
+
+
 async def reason_json(
     system: str,
     user: str,

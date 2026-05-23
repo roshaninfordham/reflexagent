@@ -125,3 +125,18 @@ CREATE TABLE IF NOT EXISTS monitor_seen
 )
 ENGINE = ReplacingMergeTree(first_seen)
 ORDER BY (source, external_id);
+
+-- ===== 8. Outbox: actions the agent has executed (memos sent, etc.) =====
+CREATE TABLE IF NOT EXISTS outbox
+(
+    sent_id UUID DEFAULT generateUUIDv4(),
+    workflow_id UUID,
+    channel LowCardinality(String),  -- pharmacist_memo / clinician_alert / patient_letter / publish / payment
+    recipient_count UInt32 DEFAULT 0,
+    body String,
+    payload_json String DEFAULT '',
+    triggered_by LowCardinality(String) DEFAULT 'voice_agent',
+    sent_at DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+ORDER BY sent_at;
