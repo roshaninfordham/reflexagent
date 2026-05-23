@@ -98,11 +98,28 @@ html[data-theme='light'] .btn-primary { color: #FFFFFF; }
 }
 
 /* Tailwind color aliases now drive CSS-var values for components that reference them directly */
-.text-ice { color: var(--text-1); }
-.text-slate-light { color: var(--text-2); }
+.text-ice, .text-ice\/90, .text-ice\/80, .text-ice\/70, .text-ice\/60 { color: var(--text-1); }
+html[data-theme='light'] .text-ice\/90 { color: rgba(15, 23, 42, 0.92); }
+html[data-theme='light'] .text-ice\/80 { color: rgba(15, 23, 42, 0.82); }
+html[data-theme='light'] .text-ice\/70 { color: rgba(15, 23, 42, 0.72); }
+html[data-theme='light'] .text-ice\/60 { color: rgba(15, 23, 42, 0.62); }
+.text-slate-light { color: var(--text-2) !important; }
 .text-teal-glow { color: var(--teal-glow); }
 .bg-ink { background: var(--bg-ink); }
-.border-teal\/10 { border-color: var(--border-soft); }
-.border-teal\/15 { border-color: var(--border-soft); }
-.border-teal\/20 { border-color: var(--border-soft); }
-.border-teal\/30 { border-color: var(--border-strong); }
+.bg-ink\/40 { background: var(--bg-ink); }
+.bg-ink\/60 { background: var(--bg-ink); }
+.bg-ink\/80 { background: var(--bg-ink); }
+.border-teal\/10, .border-teal\/15, .border-teal\/20 { border-color: var(--border-soft) !important; }
+.border-teal\/30, .border-teal\/40 { border-color: var(--border-strong) !important; }
+/* Tabular dark-mode tints fail on light bg — re-tint cards/blocks for readability */
+html[data-theme='light'] .glow-text { text-shadow: 0 0 22px rgba(15, 118, 110, 0.25); }
+html[data-theme='light'] .grid-bg {
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(13, 148, 136, 0.07), transparent 50%),
+    linear-gradient(rgba(13, 148, 136, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13, 148, 136, 0.08) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+}
+/* Hero subtitle paragraphs with explicit slate-light should remain readable */
+html[data-theme='light'] p { color: #1e293b; }
+html[data-theme='light'] code { color: #134E4A; background: rgba(13, 148, 136, 0.08); padding: 1px 5px; border-radius: 4px; }

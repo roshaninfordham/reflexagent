@@ -276,7 +276,11 @@ const stage = document.getElementById('stage');
 const count = document.getElementById('count');
 
 function render() {
-  stage.innerHTML = slides[idx];
+  let html = slides[idx];
+  if (!/class="slide [^"]*active/.test(html)) {
+    html = html.replace(/class="slide(\s|")/, 'class="slide active$1');
+  }
+  stage.innerHTML = html;
   count.textContent = `${idx + 1} / ${slides.length}`;
 }
 function next() { idx = Math.min(slides.length - 1, idx + 1); render(); }

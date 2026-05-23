@@ -1,0 +1,95 @@
+# Render Blueprint — deploys Reflex as two services.
+# Run `render blueprint launch` after pushing this file, or point Render's
+# Blueprint UI at the repo and import.
+
+services:
+  # ---------- Backend: FastAPI + autonomous monitor ----------
+  - type: web
+    name: reflex-api
+    runtime: python
+    plan: free  # or starter for the autonomous monitor to keep ticking
+    region: oregon
+    rootDir: .
+    buildCommand: pip install -r apps/api/requirements.txt
+    startCommand: ddtrace-run uvicorn apps.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: MONITOR_POLL_INTERVAL_SECONDS
+        value: "60"
+      - key: MONITOR_ENABLED
+        value: "1"
+      - key: REASONING_PROVIDER
+        value: nvidia
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_TEXT_MODEL
+        value: meta/llama-3.3-70b-instruct
+      - key: NVIDIA_VISION_MODEL
+        value: meta/llama-3.2-90b-vision-instruct
+      - key: NVIDIA_BIOLOGY_URL
+        value: https://health.api.nvidia.com/v1/biology/meta/esm2-650m
+      - key: SENSO_PUBLISH_TARGET
+        value: reflex.cited.md
+      - key: COINBASE_NETWORK
+        value: base-sepolia
+      - key: X402_PRICE_USD
+        value: "0.50"
+      - key: DD_LLMOBS_ENABLED
+        value: "1"
+      - key: DD_LLMOBS_ML_APP
+        value: reflex
+      - key: DD_LLMOBS_AGENTLESS_ENABLED
+        value: "1"
+      - key: DD_SITE
+        value: datadoghq.com
+      # SECRETS — set these manually in the Render dashboard:
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_VISION_API_KEY
+        sync: false
+      - key: NVIDIA_BIOLOGY_API_KEY
+        sync: false
+      - key: NIMBLE_API_KEY
+        sync: false
+      - key: CLICKHOUSE_HOST
+        sync: false
+      - key: CLICKHOUSE_PORT
+        sync: false
+      - key: CLICKHOUSE_USER
+        sync: false
+      - key: CLICKHOUSE_PASSWORD
+        sync: false
+      - key: CLICKHOUSE_DATABASE
+        sync: false
+      - key: SENSO_API_KEY
+        sync: false
+      - key: DD_API_KEY
+        sync: false
+      - key: DD_APPLICATION_KEY
+        sync: false
+      - key: X402_SECRET
+        sync: false
+      - key: BURNER_PRIVATE_KEY
+        sync: false
+
+  # ---------- Frontend: Next.js 14 ----------
+  - type: web
+    name: reflex-web
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    startCommand: npm start -- -p $PORT
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_BASE
+        fromService:
+          type: web
+          name: reflex-api
+          property: hostport

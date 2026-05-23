@@ -141,10 +141,10 @@ graph TB
     end
 
     subgraph WEB[Next.js 14 Frontend]
-        L[/ landing]
-        W[/workflow/:id<br/>Canvas Agent Theater]
-        B[/brief/:id<br/>2D + 3D molecule preview]
-        P[/premium<br/>x402 paywall]
+        L["landing"]
+        W["workflow detail · Canvas Agent Theater"]
+        B["brief · 2D + 3D molecule preview"]
+        P["premium · x402 paywall"]
     end
 
     T1 --> ORC
