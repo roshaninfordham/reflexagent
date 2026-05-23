@@ -19,6 +19,7 @@ export default function HomePage() {
         </div>
         <nav className="flex items-center gap-5 text-sm">
           <Link href="/" className="text-ice hover:text-teal-glow">Live</Link>
+          <Link href="/ops" className="text-ice hover:text-teal-glow">Ops</Link>
           <Link href="/premium" className="text-ice hover:text-teal-glow">Premium</Link>
           <a
             href="https://github.com/roshaninfordham/reflexagent"
