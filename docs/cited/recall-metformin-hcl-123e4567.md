@@ -1,36 +1,36 @@
 # Reflex Safety Brief: Metformin Hcl
 
-**Published:** 2026-05-23T18:51:42Z
-**Workflow ID:** `32dd1013-17b7-4179-b8f8-5377e63b6a3d`
+**Published:** 2026-05-23T18:59:12Z
+**Workflow ID:** `6a3872a9-96dd-483c-8ff4-4c70e92419e7`
 **Severity Score:** 5.5 / 10
 **Verification:** 3 of 9 verification agents confirmed; counter-evidence: yes.
 
 ## Summary
-The FDA has classified the recall of Metformin Hcl as Class II due to the presence of NDMA, a potential human carcinogen. Apotex Corp initiated the recall of lots APX5523 and APX5524. Verification found that 18 patients were affected, with 10 being high-risk. The recall was prompted by the detection of NDMA in the extended-release tablets.
+This recall is classified as a Class II recall, initiated by Apotex Corp due to the presence of NDMA in Metformin HCl Extended-Release Tablets. The verification chain found that 18 patients were affected, with 10 being high-risk. The recall includes lots APX5523 and APX5524.
 
 ## Key Findings
-- The FDA has detected NDMA in Metformin Hcl extended-release tablets, leading to a voluntary nationwide recall of lots APX5523 and APX5524 by Apotex Corp.
-- According to the FAERS Public Dashboard, 18 patients have reported adverse events related to Metformin Hcl, with 10 being high-risk.
-- The EMA has concluded a review of NDMA in Metformin-containing medicines, which found that the presence of NDMA is a potential health risk.
-- A systematic review of nitrosamine contamination in Metformin, published on PubMed, found that NDMA is a potential human carcinogen.
-- Apotex Corp has issued a voluntary recall of Metformin Hcl extended-release tablets due to the presence of NDMA, affecting lots APX5523 and APX5524.
+- The FDA has recalled Metformin HCl Extended-Release Tablets due to the presence of NDMA, a known carcinogen, in lots APX5523 and APX5524.
+- According to the FAERS Public Dashboard, 18 patients have reported adverse events related to Metformin, with 10 being high-risk.
+- The EMA has concluded a review of NDMA in Metformin-containing medicines, finding that the risk of contamination is present.
+- A systematic review of nitrosamine contamination in Metformin, published on PubMed, found that the risk of NDMA contamination is a concern.
+- Apotex Corp has issued a voluntary nationwide recall of the affected lots, APX5523 and APX5524.
 
 ## Counter-Evidence Considered
-The FDA Updates and Press Announcements on NDMA in Metformin, as well as the EMA — Metformin-containing medicines: NDMA review concluded, provide some counter-evidence to the recall, suggesting that the levels of NDMA detected may not be high enough to pose a significant health risk. However, the recall remains in effect due to the potential health risks associated with NDMA.
+The FDA Updates and Press Announcements on NDMA in Metformin, as well as the EMA — Metformin-containing medicines: NDMA review concluded, provide some counter-evidence to the recall, stating that the risk of NDMA contamination is being monitored and that the benefits of Metformin outweigh the risks. However, the recall remains in place due to the presence of NDMA in the affected lots.
 
 ## Affected Population (demo fixture)
 - Patients identified: **18**
 - High-risk (>75 or CKD stage 3+): **10**
 
 ## Recommendation
-Pharmacy Directors should quarantine lots APX5523 and APX5524 of Metformin Hcl extended-release tablets and notify all affected patients. An audit trail should be maintained to track the recall and ensure that all affected products are removed from circulation. Patients who have been taking the recalled medication should be advised to consult their healthcare provider for alternative treatment options.
+Pharmacy Directors should quarantine lots APX5523 and APX5524 of Metformin HCl Extended-Release Tablets and notify all relevant personnel. An audit trail should be maintained to ensure that all affected products are removed from inventory and that patients are notified of the recall.
 
 ## Citations
-[^1]: [FDA Updates and Press Announcements on NDMA in Metformin](https://www.fda.gov/drugs/drug-safety-and-availability/fda-updates-and-press-announcements-ndma-metformin) — Retrieved 2026-05-23T18:51:40.322770.
-[^2]: [Apotex Recalls Metformin HCl Extended-Release Tablets — Lots APX5523, APX5524](https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts/apotex-corp-issues-voluntary-nationwide-recall-metformin-hcl-er) — Retrieved 2026-05-23T18:51:40.322787.
-[^3]: [FAERS Public Dashboard — Metformin Adverse Events](https://fis.fda.gov/sense/app/95239e26-e0be-42d9-a960-9a5f7f1c25ee/sheet/7a47a261-d58b-4203-a8aa-6d3021737452) — Retrieved 2026-05-23T18:51:40.322792.
-[^4]: [EMA — Metformin-containing medicines: NDMA review concluded](https://www.ema.europa.eu/en/medicines/human/referrals/metformin-containing-medicines) — Retrieved 2026-05-23T18:51:40.322802.
-[^5]: [Metformin and NDMA: A systematic review of nitrosamine contamination](https://pubmed.ncbi.nlm.nih.gov/35142345/) — Retrieved 2026-05-23T18:51:40.322806.
+[^1]: [FDA Updates and Press Announcements on NDMA in Metformin](https://www.fda.gov/drugs/drug-safety-and-availability/fda-updates-and-press-announcements-ndma-metformin) — Retrieved 2026-05-23T18:59:11.081426.
+[^2]: [Apotex Recalls Metformin HCl Extended-Release Tablets — Lots APX5523, APX5524](https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts/apotex-corp-issues-voluntary-nationwide-recall-metformin-hcl-er) — Retrieved 2026-05-23T18:59:11.081435.
+[^3]: [FAERS Public Dashboard — Metformin Adverse Events](https://fis.fda.gov/sense/app/95239e26-e0be-42d9-a960-9a5f7f1c25ee/sheet/7a47a261-d58b-4203-a8aa-6d3021737452) — Retrieved 2026-05-23T18:59:11.081437.
+[^4]: [EMA — Metformin-containing medicines: NDMA review concluded](https://www.ema.europa.eu/en/medicines/human/referrals/metformin-containing-medicines) — Retrieved 2026-05-23T18:59:11.081439.
+[^5]: [Metformin and NDMA: A systematic review of nitrosamine contamination](https://pubmed.ncbi.nlm.nih.gov/35142345/) — Retrieved 2026-05-23T18:59:11.081441.
 
 ---
 *Reflex is an autonomous pharmacovigilance agent system. This brief is generated by an autonomous agent swarm and verified against 5 primary sources. Not a substitute for FDA labeling or licensed medical advice. For premium personalized analysis (subgroups, formulary impact): query the x402 endpoint at `/api/v1/premium-subbrief`.*
