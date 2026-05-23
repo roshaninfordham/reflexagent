@@ -193,3 +193,50 @@ def known_target(drug_name: str) -> dict[str, str] | None:
         if k in key or key in k:
             return v
     return None
+
+
+# ---- Autonomous UniProt sequence fetcher ----
+# Used by the Substitute agent so any drug whose target the LLM identifies
+# can still get a real protein sequence (and therefore a real ESM2 embedding +
+# similarity rank), not just the ones in PROTEIN_FIXTURE.
+
+_uniprot_cache: dict[str, str] = {}
+
+
+async def fetch_uniprot_sequence(uniprot_id: str) -> str | None:
+    """Pull canonical protein sequence from UniProt as FASTA, return the residue
+    string (no header). Caches in process memory."""
+    if not uniprot_id:
+        return None
+    uid = uniprot_id.strip().upper()
+    if uid in _uniprot_cache:
+        return _uniprot_cache[uid]
+    url = f"https://rest.uniprot.org/uniprotkb/{uid}.fasta"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            if r.status_code == 200 and r.text:
+                lines = r.text.splitlines()
+                seq = "".join(ln.strip() for ln in lines if not ln.startswith(">"))
+                if seq:
+                    _uniprot_cache[uid] = seq
+                    return seq
+    except Exception as e:  # noqa: BLE001
+        log.warning("uniprot fetch %s failed: %s", uid, e)
+    return None
+
+
+async def resolve_target_sequence(target_text: str | None) -> dict[str, str] | None:
+    """Best-effort: turn an LLM-identified target string into a real sequence.
+    Walks: alphafold UniProt map → UniProt REST → returns {target, sequence}."""
+    if not target_text:
+        return None
+    from apps.api import alphafold as af
+    resolved = af.resolve_uniprot(target_text)
+    if not resolved:
+        return None
+    uniprot, label = resolved
+    seq = await fetch_uniprot_sequence(uniprot)
+    if seq:
+        return {"target": label, "sequence": seq, "uniprot": uniprot}
+    return None

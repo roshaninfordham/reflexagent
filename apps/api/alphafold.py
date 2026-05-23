@@ -87,10 +87,11 @@ async def lookup_for_target(target_text: str | None) -> dict[str, Any] | None:
         return None
     uniprot, label = resolved
     pred = await fetch_prediction(uniprot)
+    version = int((pred or {}).get("latestVersion") or 4)
     out: dict[str, Any] = {
         "uniprot": uniprot,
         "label": label,
-        "pdb_url": pdb_url(uniprot),
+        "pdb_url": pdb_url(uniprot, version=version),
         "viewer_url": f"https://alphafold.ebi.ac.uk/entry/{uniprot}",
         "source": "alphafold-ebi",
     }

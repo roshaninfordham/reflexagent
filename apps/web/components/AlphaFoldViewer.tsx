@@ -77,33 +77,34 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
     if (!data?.found || !data.pdb_url || !viewerRef.current) return;
     let cancelled = false;
     setPdbLoaded(false);
+    setErr(null);
 
     (async () => {
       try {
         const $3Dmol = await load3Dmol();
-        const pdbText = await fetch(data.pdb_url!).then((r) => r.text());
+        const pdbText = await fetch(data.pdb_url!).then((r) => {
+          if (!r.ok) throw new Error(`AlphaFold PDB ${r.status}`);
+          return r.text();
+        });
         if (cancelled || !viewerRef.current) return;
+        if (!pdbText || pdbText.length < 100) throw new Error('empty PDB response');
+
         viewerRef.current.innerHTML = '';
         const v = $3Dmol.createViewer(viewerRef.current, { backgroundColor: '#06101F' });
         v.addModel(pdbText, 'pdb');
-        // AlphaFold stores pLDDT in the B-factor column → color by it
+        // Color by B-factor (AlphaFold stores per-residue pLDDT there).
+        // Use the built-in 'b' scheme + min/max for the pLDDT 0–100 range —
+        // more robust than colorfunc which trips on some browsers.
         v.setStyle({}, {
-          cartoon: {
-            colorfunc: (atom: any) => {
-              const b = atom.b ?? 0;
-              if (b >= 90) return '#0F62FE';
-              if (b >= 70) return '#5EEAD4';
-              if (b >= 50) return '#F59E0B';
-              return '#EF4444';
-            },
-          },
+          cartoon: { colorscheme: { prop: 'b', gradient: 'roygb', min: 50, max: 90 } },
         });
         v.zoomTo();
         v.render();
-        v.spin('y', 0.4);
+        try { v.spin('y', 0.4); } catch {}
         setPdbLoaded(true);
       } catch (e: any) {
         setErr(e?.message || 'AlphaFold render failed');
+        setPdbLoaded(false);
       }
     })();
     return () => { cancelled = true; };
@@ -168,11 +169,7 @@ export default function AlphaFoldViewer({ target }: { target: string }) {
         </div>
       </div>
       <div className="px-4 py-2 border-t border-teal/10 text-[10px] text-slate-light">
-        Colored by AlphaFold pLDDT confidence per residue ·
-        <span style={{ color: '#0F62FE' }}> very high</span> /
-        <span style={{ color: '#5EEAD4' }}> confident</span> /
-        <span style={{ color: '#F59E0B' }}> low</span> /
-        <span style={{ color: '#EF4444' }}> very low</span>.
+        Colored by AlphaFold pLDDT confidence per residue · red→orange→yellow→green→blue (50→90).
         Source: AlphaFold Protein Structure Database (EBI · CC-BY 4.0).
       </div>
     </div>

@@ -84,12 +84,23 @@ async def run(workflow_id: UUID, normalized: NormalizedRecall, reason_for_recall
             log.warning("substitute LLM fallback (%s); using fixture", e)
             alt = _AltList(target_protein="(unknown — fixture fallback)", alternatives=[])
 
-        # Anchor target sequence: prefer fixture (always works), fall back to LLM.
+        # Anchor target sequence: fixture first → dynamic UniProt fallback so
+        # any drug whose target the LLM identifies gets a real anchor.
+        from apps.api.tools.biology import resolve_target_sequence
         recalled_target_info = known_target(drug)
         recalled_target_name = (
             (recalled_target_info or {}).get("target") or alt.target_protein or "unknown"
         )
         recalled_seq = (recalled_target_info or {}).get("sequence")
+        if not recalled_seq:
+            try:
+                dyn = await resolve_target_sequence(alt.target_protein or drug)
+                if dyn:
+                    recalled_seq = dyn["sequence"]
+                    if recalled_target_name in ("unknown", ""):
+                        recalled_target_name = dyn["target"]
+            except Exception as e:  # noqa: BLE001
+                log.debug("anchor sequence fallback failed: %s", e)
 
         result.recalled_target = recalled_target_name
 
@@ -98,17 +109,31 @@ async def run(workflow_id: UUID, normalized: NormalizedRecall, reason_for_recall
             span.set_output(result.model_dump(mode="json"))
             return result
 
-        # Step 2: Build candidate list. Use fixture sequences where possible.
+        # Step 2: Build candidate list. Try fixture first, then resolve via
+        # UniProt+AlphaFold mapping so any LLM-identified target gets a real
+        # sequence (and therefore a real ESM2 similarity instead of n/a).
+        from apps.api.tools.biology import resolve_target_sequence
         candidates: list[dict[str, Any]] = []
         for a in alt.alternatives[:3]:
             fx = known_target(a.drug_name)
+            seq = (fx or {}).get("sequence")
+            target = a.target_protein or (fx or {}).get("target", "")
+            if not seq:
+                try:
+                    dyn = await resolve_target_sequence(target or a.drug_name)
+                    if dyn:
+                        seq = dyn["sequence"]
+                        if not target:
+                            target = dyn["target"]
+                except Exception as e:  # noqa: BLE001
+                    log.debug("dynamic UniProt sequence for %s failed: %s", a.drug_name, e)
             candidates.append(
                 {
                     "drug_name": a.drug_name,
                     "drug_class": a.drug_class,
-                    "target_protein": a.target_protein or (fx or {}).get("target", ""),
+                    "target_protein": target,
                     "rationale": a.rationale,
-                    "sequence": (fx or {}).get("sequence"),
+                    "sequence": seq,
                 }
             )
 
