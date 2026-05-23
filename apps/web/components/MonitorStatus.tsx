@@ -18,6 +18,7 @@ type Status = {
   novel_triggered: number;
   last_novel_id: string | null;
   recent_novels: Novel[];
+  poll_interval_seconds?: number;
 };
 
 function rel(ts: string | null): string {
@@ -69,7 +70,7 @@ export default function MonitorStatus() {
             Autonomous monitor
           </span>
         </div>
-        <span className="text-xs text-slate-light">OpenFDA · every 30s</span>
+        <span className="text-xs text-slate-light">OpenFDA · every {st?.poll_interval_seconds ?? 60}s</span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">

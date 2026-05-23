@@ -97,21 +97,27 @@ html[data-theme='light'] .btn-primary { color: #FFFFFF; }
   border-radius: 3px;
 }
 
-/* Tailwind color aliases now drive CSS-var values for components that reference them directly */
-.text-ice, .text-ice\/90, .text-ice\/80, .text-ice\/70, .text-ice\/60 { color: var(--text-1); }
-html[data-theme='light'] .text-ice\/90 { color: rgba(15, 23, 42, 0.92); }
-html[data-theme='light'] .text-ice\/80 { color: rgba(15, 23, 42, 0.82); }
-html[data-theme='light'] .text-ice\/70 { color: rgba(15, 23, 42, 0.72); }
-html[data-theme='light'] .text-ice\/60 { color: rgba(15, 23, 42, 0.62); }
-.text-slate-light { color: var(--text-2) !important; }
+/* ---- Color utility overrides driven by CSS vars (works in both themes) ---- */
+
+[class*="text-ice"] { color: var(--text-1); }
+.text-slate-light, [class*="text-slate"] { color: var(--text-2); }
 .text-teal-glow { color: var(--teal-glow); }
-.bg-ink { background: var(--bg-ink); }
-.bg-ink\/40 { background: var(--bg-ink); }
-.bg-ink\/60 { background: var(--bg-ink); }
-.bg-ink\/80 { background: var(--bg-ink); }
-.border-teal\/10, .border-teal\/15, .border-teal\/20 { border-color: var(--border-soft) !important; }
-.border-teal\/30, .border-teal\/40 { border-color: var(--border-strong) !important; }
-/* Tabular dark-mode tints fail on light bg — re-tint cards/blocks for readability */
+[class*="bg-ink"] { background: var(--bg-ink); }
+[class*="border-teal"] { border-color: var(--border-soft); }
+
+/* Light-mode hard overrides — Tailwind opacity variants like text-ice/90 become invisible
+   on white backgrounds when --text-1 is dark navy with alpha. Force solid-near-black so
+   every body-text + caption stays readable in light mode. */
+html[data-theme='light'] [class*="text-ice"] { color: #0F172A !important; }
+html[data-theme='light'] .text-ice\/90,
+html[data-theme='light'] .text-ice\/80,
+html[data-theme='light'] .text-ice\/70,
+html[data-theme='light'] .text-ice\/60 { color: #1E293B !important; }
+html[data-theme='light'] [class*="text-slate"] { color: #475569 !important; }
+html[data-theme='light'] .text-teal-glow { color: #0F766E !important; }
+html[data-theme='light'] [class*="bg-ink"] { background: rgba(241, 245, 249, 0.85) !important; }
+html[data-theme='light'] [class*="border-teal"] { border-color: rgba(13, 148, 136, 0.25) !important; }
+html[data-theme='light'] code { color: #134E4A; background: rgba(13, 148, 136, 0.10); padding: 1px 5px; border-radius: 4px; }
 html[data-theme='light'] .glow-text { text-shadow: 0 0 22px rgba(15, 118, 110, 0.25); }
 html[data-theme='light'] .grid-bg {
   background-image:
@@ -120,6 +126,16 @@ html[data-theme='light'] .grid-bg {
     linear-gradient(90deg, rgba(13, 148, 136, 0.08) 1px, transparent 1px);
   background-size: auto, 32px 32px, 32px 32px;
 }
-/* Hero subtitle paragraphs with explicit slate-light should remain readable */
-html[data-theme='light'] p { color: #1e293b; }
-html[data-theme='light'] code { color: #134E4A; background: rgba(13, 148, 136, 0.08); padding: 1px 5px; border-radius: 4px; }
+html[data-theme='light'] .card {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(13, 148, 136, 0.18);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+html[data-theme='light'] .btn {
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.35);
+  color: #0F766E;
+}
+html[data-theme='light'] .btn:hover { background: rgba(13, 148, 136, 0.16); }
+html[data-theme='light'] .btn-primary { background: linear-gradient(135deg, #0D9488, #0F766E); color: #FFFFFF; }
+html[data-theme='light'] .btn-primary:hover { background: linear-gradient(135deg, #0F766E, #134E4A); }

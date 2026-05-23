@@ -111,6 +111,7 @@ async def monitor_status():
         "novel_triggered": st.novel_triggered,
         "last_novel_id": st.last_novel_id,
         "recent_novels": st.recent_novels,
+        "poll_interval_seconds": get_settings().monitor_poll_interval_seconds,
     }
 
 
