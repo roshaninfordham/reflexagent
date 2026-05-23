@@ -1,7 +1,7 @@
 # Reflex Safety Brief: Tpn Bag (Patient Specific), Rx# 11-4909703-0-1, Compound Volume 1660 Ml Per Bag, Rx Only, Single Dose Injection, Refrige
 
-**Published:** 2026-05-23T16:51:46Z
-**Workflow ID:** `53b52ee0-e003-41b2-86a5-401a213b58e2`
+**Published:** 2026-05-23T17:00:54Z
+**Workflow ID:** `520712aa-5669-4fc3-a39a-177487e01b23`
 **Severity Score:** 6.0 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
