@@ -1,7 +1,7 @@
 # Reflex Safety Brief: Lactated Ringer'S Injection Usp, 1000 Ml Container, Rx Only, B. Braun Medical, Inc., Bethlehem, Pa 18018-3524 Usa, Ndc 0
 
-**Published:** 2026-05-23T17:04:49Z
-**Workflow ID:** `e5ace439-bf85-45b4-b994-59e06702ae77`
+**Published:** 2026-05-23T17:05:31Z
+**Workflow ID:** `d222ea0a-02ce-42ad-a04b-6c7071f23413`
 **Severity Score:** 6.0 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
