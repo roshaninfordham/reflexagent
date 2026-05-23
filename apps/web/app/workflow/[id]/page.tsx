@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AgentTheater from '../../../components/AgentTheater';
+import AlphaFoldViewer from '../../../components/AlphaFoldViewer';
 import HotspotMap from '../../../components/HotspotMap';
+import InteractionsPanel from '../../../components/InteractionsPanel';
 import MoleculePreview, { isPreviewable } from '../../../components/MoleculePreview';
 import VoiceAgent from '../../../components/VoiceAgent';
 import { api } from '../../../lib/api';
@@ -154,6 +156,19 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
                 2D from PubChem · 3D protein cartoon from RCSB PDB (rotating)
               </div>
             </Card>
+          )}
+
+          {/* AlphaFold predicted structure for the recalled target */}
+          {wf?.substitutes?.recalled_target && (
+            <AlphaFoldViewer target={wf.substitutes.recalled_target} />
+          )}
+
+          {/* Drug-drug interactions vs each substitute */}
+          {wf?.normalized?.normalized_drug && wf.substitutes && wf.substitutes.candidates.length > 0 && (
+            <InteractionsPanel
+              recalledDrug={wf.normalized.normalized_drug}
+              substitutes={wf.substitutes.candidates.map((c) => ({ drug: c.drug_name }))}
+            />
           )}
 
           {wf?.published && (

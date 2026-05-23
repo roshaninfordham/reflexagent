@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import AlphaFoldViewer from '../../../components/AlphaFoldViewer';
 import ChemistryPanel from '../../../components/ChemistryPanel';
+import InteractionsPanel from '../../../components/InteractionsPanel';
 import ThemeToggle from '../../../components/ThemeToggle';
 import { API_BASE, api } from '../../../lib/api';
 
@@ -99,9 +101,20 @@ function Inner({ slug }: { slug: string }) {
         <p className="text-slate-light mt-3 leading-relaxed">{detail.story}</p>
         <div className="mt-2 text-[11px] text-slate-light italic">{detail.scope}</div>
 
-        <div className="mt-6">
+        <div className="mt-6 grid lg:grid-cols-2 gap-5">
           <ChemistryPanel drugName={detail.drug} />
+          {/* AlphaFold prediction — uses the Reflex Substitute output if available, else the drug name as hint */}
+          <AlphaFoldViewer target={compare?.reflex?.substitutes?.[0]?.target || detail.drug} />
         </div>
+
+        {compare?.reflex?.substitutes && compare.reflex.substitutes.length > 0 && (
+          <div className="mt-5">
+            <InteractionsPanel
+              recalledDrug={detail.drug}
+              substitutes={compare.reflex.substitutes.map((s) => ({ drug: s.drug }))}
+            />
+          </div>
+        )}
 
         <div className="mt-6 grid lg:grid-cols-2 gap-5">
           <div className="card p-5 border-warn/30">

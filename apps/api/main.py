@@ -331,6 +331,39 @@ async def chemistry_dossier(name: str):
     return await chem.full_dossier(name)
 
 
+# ----- AlphaFold protein predictions -----
+
+
+@app.get("/api/v1/protein/alphafold")
+async def alphafold_lookup(target: str):
+    """target = a protein name/gene symbol the Substitute agent surfaces
+    ('AMPK α1', 'PRKAA1', 'EGFR', 'thrombin', etc.). Returns the AlphaFold
+    DB prediction URL + UniProt metadata."""
+    from apps.api import alphafold as af
+    result = await af.lookup_for_target(target)
+    if not result:
+        return {"target": target, "found": False}
+    return {"target": target, "found": True, **result}
+
+
+# ----- Drug-drug interaction checker -----
+
+
+@app.get("/api/v1/interactions/check")
+async def drug_pair_check(drug_a: str, drug_b: str):
+    """Cross-references both drugs' SPL labels for pairwise warnings."""
+    from apps.api import interactions as inter
+    return await inter.check_pair(drug_a, drug_b)
+
+
+@app.get("/api/v1/interactions/{drug}")
+async def drug_label(drug: str):
+    """Pulls the FDA Structured Product Label for one drug and returns the
+    drug_interactions + warnings + contraindications sections verbatim."""
+    from apps.api import interactions as inter
+    return await inter.get_label(drug)
+
+
 # ----- Historical recalls (real openFDA + curated outcomes) -----
 
 
