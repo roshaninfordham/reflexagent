@@ -6,8 +6,8 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import ActivityFeed from '../../components/ActivityFeed';
 import AgentTheater from '../../components/AgentTheater';
 import BriefSummaryCard from '../../components/BriefSummaryCard';
-import FloatingVoiceAgent from '../../components/FloatingVoiceAgent';
 import GlobalHotspotMap from '../../components/GlobalHotspotMap';
+import ReflexCopilot from '../../components/ReflexCopilot';
 import LaunchDemo from '../../components/LaunchDemo';
 import MonitorStatus from '../../components/MonitorStatus';
 import RecentWorkflows from '../../components/RecentWorkflows';
@@ -141,20 +141,14 @@ function OpsInner() {
           )}
         </div>
 
-        {/* Right rail — reordered: map → activity → workflows → wallet */}
+        {/* Right rail — copilot first (primary interaction), then context */}
         <div className="space-y-4">
-          <ActivityFeed limit={10} />
+          <ReflexCopilot workflowId={active?.workflow_id} />
+          <ActivityFeed limit={8} />
           <RecentWorkflows />
           <WalletBadge />
-          <div className="card p-4 text-[11px] text-slate-light leading-relaxed">
-            <div className="text-[10px] uppercase tracking-widest text-slate-light mb-1.5">Keyboard</div>
-            Press <kbd className="px-1.5 py-0.5 rounded bg-ink/60 border border-teal/20 text-ice font-mono text-[10px]">V</kbd> to talk to the voice agent · <kbd className="px-1.5 py-0.5 rounded bg-ink/60 border border-teal/20 text-ice font-mono text-[10px]">Esc</kbd> to close.
-          </div>
         </div>
       </section>
-
-      {/* Floating voice agent — always reachable */}
-      <FloatingVoiceAgent workflowId={active?.workflow_id} />
     </main>
   );
 }

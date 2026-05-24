@@ -812,87 +812,193 @@ class ChatRequest(BaseModel):
 
 
 def _build_chat_context(workflow_id: UUID | None) -> str:
-    """Concise summary of the current workflow for the voice agent's context."""
-    if not workflow_id:
-        return ""
-    w = get_result(workflow_id)
-    if not w:
-        return ""
-    parts = []
-    if w.brief:
-        parts.append(f"Active brief: {w.brief.title}.")
-        parts.append(f"Summary: {w.brief.summary}")
-    if w.triage:
+    """Live state snapshot — what the copilot sees on every turn.
+
+    Includes (a) global counts, (b) the human-review queue, (c) the focused
+    workflow detail if one is selected, (d) recent workflow list, (e) wallet,
+    (f) monitor status. The copilot is expected to make decisions from this
+    without needing to call tools for routine state questions.
+    """
+    parts: list[str] = []
+    recents = list_recent(15)
+
+    # Global counts.
+    by_status = {"running": 0, "completed": 0, "failed": 0}
+    queue: list[str] = []
+    total_patients = 0
+    total_high_risk = 0
+    for w in recents:
+        by_status[w.status] = by_status.get(w.status, 0) + 1
+        if w.cohort:
+            total_patients += w.cohort.patient_count
+            total_high_risk += w.cohort.high_risk_count
+        if w.verification and w.verification.verdict == "requires_human":
+            drug = (w.normalized.normalized_drug if w.normalized
+                    else (w.payload.drug_name or "unknown"))
+            queue.append(
+                f"  · {drug} (id={w.workflow_id}) — "
+                f"{(w.verification.conflict_summary or 'conflict pending review')[:200]}"
+            )
+    parts.append(
+        f"GLOBAL: running={by_status['running']} completed={by_status['completed']} "
+        f"failed={by_status['failed']} requires_human={len(queue)} "
+        f"patients_on_watch={total_patients} high_risk={total_high_risk}"
+    )
+
+    # Human-review queue (THE most actionable thing).
+    if queue:
+        parts.append("REVIEW QUEUE (call approve_review or dispatch_all_comms to act):")
+        parts.extend(queue[:5])
+
+    # Focused workflow if one is selected.
+    if workflow_id:
+        w = get_result(workflow_id)
+        if w:
+            detail = [f"\nFOCUSED WORKFLOW id={workflow_id} status={w.status}"]
+            if w.brief:
+                detail.append(f"  brief.title: {w.brief.title}")
+                if w.brief.summary:
+                    detail.append(f"  brief.summary: {w.brief.summary[:300]}")
+            if w.triage:
+                detail.append(
+                    f"  triage: Class {w.triage.severity} · "
+                    f"{w.triage.severity_score}/10 · {w.triage.urgency}"
+                )
+            if w.cohort:
+                detail.append(
+                    f"  cohort: {w.cohort.patient_count} patients, "
+                    f"{w.cohort.high_risk_count} high-risk"
+                )
+            if w.verification:
+                detail.append(f"  verification: {w.verification.verdict}")
+                if w.verification.conflict_summary:
+                    detail.append(f"  conflict: {w.verification.conflict_summary[:240]}")
+            if w.substitutes and w.substitutes.candidates:
+                detail.append(
+                    "  substitutes: "
+                    + ", ".join(
+                        f"{c.drug_name} (sim {c.target_similarity:.2f})"
+                        for c in w.substitutes.candidates[:3]
+                    )
+                )
+            if w.comms:
+                detail.append(
+                    "  comms drafted: pharmacist memo, clinician alert, patient letter"
+                )
+            if w.published:
+                detail.append(f"  published: {w.published.cited_md_url}")
+            parts.append("\n".join(detail))
+
+    # Recent workflows table (terse).
+    if recents:
+        parts.append("\nRECENT WORKFLOWS (most-recent first):")
+        for w in recents[:8]:
+            drug = (w.normalized.normalized_drug if w.normalized
+                    else (w.payload.drug_name or "?"))
+            sev = (f"C{w.triage.severity}" if w.triage else "?")
+            coh = (str(w.cohort.patient_count) if w.cohort else "?")
+            pub = "pub" if w.published else "—"
+            parts.append(
+                f"  · {drug} [{w.status}] id={w.workflow_id} sev={sev} cohort={coh} {pub}"
+            )
+
+    # Wallet (relevant for payment offers).
+    try:
+        info = burner.info()
         parts.append(
-            f"Triage: FDA Class {w.triage.severity}, urgency {w.triage.urgency}, "
-            f"severity score {w.triage.severity_score}/10."
+            f"\nWALLET: {info['address'][:10]}… "
+            f"USDC={info['usdc_balance_micro']/1_000_000:.4f} "
+            f"ETH={info['eth_balance_wei']/1e18:.6f}"
         )
-    if w.cohort:
+    except Exception:
+        pass
+
+    # Monitor status.
+    try:
+        ms = monitor_module.status()
         parts.append(
-            f"Affected cohort: {w.cohort.patient_count} patients, "
-            f"{w.cohort.high_risk_count} high-risk."
+            f"MONITOR: running={ms.running} polls={ms.poll_count} "
+            f"signals_reviewed={ms.signals_reviewed} "
+            f"last_poll={ms.last_poll_at.isoformat() + 'Z' if ms.last_poll_at else 'never'}"
         )
-    if w.verification:
-        parts.append(f"Verification verdict: {w.verification.verdict}.")
-        if w.verification.conflict_summary:
-            parts.append(f"Counter-evidence: {w.verification.conflict_summary}")
-    if w.substitutes and w.substitutes.candidates:
-        names = ", ".join(
-            f"{c.drug_name} ({c.target_protein.split(' ')[0] if c.target_protein else '?'}, sim {c.target_similarity:.2f})"
-            for c in w.substitutes.candidates[:3]
-        )
-        parts.append(
-            f"Therapeutic substitutes (BioNeMo ESM2 ranked): {names}. "
-            f"Recalled target: {w.substitutes.recalled_target}."
-        )
+    except Exception:
+        pass
+
     return "\n".join(parts)
 
 
 CHAT_SYSTEM = """ROLE
-You are Reflex's voice operator AND action agent. You are the conversational
-front-end to an 11-agent pharmacovigilance swarm, AND you have tools to take
-real action on behalf of the user (a pharmacy director, P&T chair, or
-healthcare journalist).
+You are Reflex's copilot — the conversational operator of an 11-agent
+autonomous pharmacovigilance swarm. The user is a pharmacy director,
+P&T chair, or healthcare journalist. You both EXPLAIN current state and
+TAKE REAL ACTIONS via tools. You do not narrate. You decide and act.
 
-DEFAULT POSTURE: ACT, DON'T REFUSE
-When the user gives any directive verb — "send the memo", "notify the
-clinicians", "publish", "do that", "take next steps", "alert everyone",
-"run a sub-brief", "show me", "open the brief", "trigger a new workflow",
-"monitor X" — CALL THE APPROPRIATE TOOL. Do not say "not in scope" for
-anything that maps to a tool you have. The tools cover real pharmacy ops.
+EVERY TURN STARTS WITH STATE
+The system message contains a fresh "LIVE STATE" block listing:
+  · global counts (running, completed, requires_human, patients on watch)
+  · the review queue (workflows held for human attention)
+  · the focused workflow (if one is selected)
+  · recent workflows list
+  · wallet balance
+  · monitor status
+Always read it first. Use it as your source of truth. Don't call
+get_dashboard_state if the answer is already in LIVE STATE — but DO call
+it if the user asks about state AFTER doing actions in the same turn
+(the snapshot is from the start of the turn).
 
-TOOLS
-- trigger_new_workflow: start a new analysis for a different drug
-- send_pharmacist_memo, send_clinician_alert, send_patient_letters: actually
-  dispatch the drafted communications (logged in the outbox, recipient
-  counts returned)
-- publish_brief: republish to cited.md
-- run_premium_subbrief: pay $0.50 and run a deeper analysis (subgroup
-  slice, formulary alternatives, etc.) — this performs a REAL x402
-  settlement (signed or on-chain)
-- list_recent_recalls: enumerate what's been processed
-- navigate_to_brief: open the brief page in the user's browser
-- get_wallet_status: check the burner wallet balance
+WHEN ASKED "what's happening?" OR "what should I do next?"
+Read LIVE STATE. Reply in this shape:
+  1) one sentence summarizing global state
+  2) the most urgent actionable item (usually requires_human queue, then
+     unpublished completed workflows, then unfinished running ones)
+  3) a concrete recommended action — and offer to do it.
+Example reply: "You have 3 running, 7 verified, and 1 held for review:
+Losartan — counter-evidence from manufacturer disputes lot range. I
+recommend approving with note 'manufacturer rebuttal acknowledged' and
+dispatching all comms. Want me to do that?"
 
-CHAINING
-Multiple tools per turn is fine. "Take next steps" almost always means:
-send_pharmacist_memo + send_clinician_alert + send_patient_letters (in
-that order). Acknowledge what you did in one sentence afterwards.
+WHEN THE USER SAYS "DO IT", "YES", "GO AHEAD", "HANDLE IT"
+Take the action you just proposed — multi-tool in one turn is normal.
+Common chains:
+  · "approve and notify" → approve_review + dispatch_all_comms
+  · "take next steps"    → dispatch_all_comms (+ publish_brief if not pub)
+  · "handle this recall" → dispatch_all_comms + publish_brief
+After tool execution, reply with ONE short confirmation sentence —
+the UI shows the tool chips, you don't have to re-list them.
 
-VOICE STYLE
-- After tool calls, speak in one or two short sentences confirming what
-  was done and offering the next logical action.
-- Lead with the action verb.
-- No bulleted lists when speaking; use prose.
+WHEN A WORKFLOW_ID IS NEEDED BUT NOT GIVEN
+Use the FOCUSED WORKFLOW id from LIVE STATE, or pick the most relevant
+from the REVIEW QUEUE / RECENT WORKFLOWS. Never ask the user to type a
+UUID — pick one based on the conversation.
 
-GROUNDING
-- Use the supplied workflow context for facts.
-- Never invent FDA classifications, citation URLs, or cohort numbers.
+ACTION TOOLS (real, server-side)
+  · get_dashboard_state            — fresh snapshot mid-turn
+  · launch_demo_workflow           — fastest end-to-end demo
+  · trigger_new_workflow(drug)     — analyze a new drug
+  · replay_historical_recall(slug) — re-run a famous past recall
+  · get_workflow_detail(id)        — full state of one workflow
+  · dispatch_all_comms(id)         — pharmacist + clinician + patient in one
+  · send_pharmacist_memo/clinician_alert/patient_letters(id)
+  · approve_review(id, note)       — clear requires_human + publish
+  · publish_brief(id)              — Senso + git mirror
+  · run_premium_subbrief(id, q)    — REAL x402 payment + deeper analysis
+  · navigate(page, id?, slug?)     — push the user's browser to a page
+  · get_wallet_status              — USDC + ETH on Base Sepolia
 
-WHEN A TOOL FAILS
-- If a tool returns an error, say what failed in one sentence and offer a
-  workable next step (e.g. "the brief isn't drafted yet — the swarm is
-  still on the Verify step").
+STYLE
+  · Short. Plain English. No bullet lists unless the user asks for one.
+  · Lead with the verb when proposing actions: "Approving Losartan and
+    dispatching comms now…"
+  · Never invent FDA classifications, citations, or cohort sizes —
+    read them from LIVE STATE.
+  · If a tool fails, say what failed in one sentence and offer the next
+    workable step.
+
+DO NOT
+  · Do not refuse on-scope requests by saying "I can't do that" — almost
+    everything maps to a tool.
+  · Do not ask for confirmation before harmless info actions (navigate,
+    get_workflow_detail). DO confirm before payments and before "approve".
 """
 
 
@@ -907,10 +1013,10 @@ async def _run_agent_loop(
     ctx = _build_chat_context(workflow_id)
     system_blocks = [CHAT_SYSTEM]
     if ctx:
-        system_blocks.append(f"WORKFLOW CONTEXT (use as source of truth):\n{ctx}")
+        system_blocks.append(f"LIVE STATE (read this first — source of truth):\n{ctx}")
     if workflow_id:
         system_blocks.append(
-            f"DEFAULT WORKFLOW ID (use this if the user does not specify): {workflow_id}"
+            f"FOCUSED WORKFLOW ID (use as default when an action needs an id): {workflow_id}"
         )
 
     messages: list[dict[str, Any]] = [
@@ -973,18 +1079,18 @@ async def _run_agent_loop(
             except Exception:
                 args = {}
             # Inject the default workflow_id if one was implied and the tool needs it.
-            if (
-                "workflow_id" in (tc.function.name or "")
-                or tc.function.name in {
-                    "send_pharmacist_memo",
-                    "send_clinician_alert",
-                    "send_patient_letters",
-                    "publish_brief",
-                    "run_premium_subbrief",
-                    "navigate_to_brief",
-                }
-            ) and not args.get("workflow_id"):
+            _needs_wf = {
+                "send_pharmacist_memo", "send_clinician_alert", "send_patient_letters",
+                "publish_brief", "run_premium_subbrief", "approve_review",
+                "dispatch_all_comms", "get_workflow_detail",
+            }
+            if tc.function.name in _needs_wf and not args.get("workflow_id"):
                 if workflow_id:
+                    args["workflow_id"] = str(workflow_id)
+            # The navigate tool may benefit from the default workflow_id
+            # for brief/workflow/trace destinations.
+            if tc.function.name == "navigate" and not args.get("workflow_id"):
+                if workflow_id and args.get("page") in {"brief", "workflow", "trace"}:
                     args["workflow_id"] = str(workflow_id)
 
             result = await agent_tools.execute(tc.function.name, args)

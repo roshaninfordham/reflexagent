@@ -1,13 +1,14 @@
-"""Voice-agent action toolkit.
+"""Reflex copilot — action toolkit.
 
-The voice agent's `/api/v1/chat` endpoint exposes these as OpenAI-spec tool
+The copilot endpoint `/api/v1/chat` exposes these as OpenAI-spec tool
 definitions to the NIM Llama 3.3 70B model. The model decides when to call
 them; we execute them server-side; results feed back into the next loop
 iteration so the model can chain actions.
 
-Every tool returns a small dict with two important fields:
-  - `summary`: a single sentence the model can speak back to the user.
-  - `client_hint`: optional dict the UI can act on (e.g. {"navigate": "/brief/.."}).
+Every tool returns a dict with two important fields:
+  - `summary`: a one-line sentence the model can speak / show back.
+  - `client_hint`: optional dict the UI can act on (`navigate`, `toast`,
+    `refresh`).
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from apps.api import historical as historical_mod
 from apps.api import wallet as burner
 from apps.api.agents import publisher as publisher_agent
 from apps.api.orchestrator import get_result, list_recent, orchestrate
@@ -34,11 +36,38 @@ TOOL_SPECS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "get_dashboard_state",
+            "description": (
+                "Fetch a fresh snapshot of the entire Reflex system: every workflow "
+                "(running/completed/failed), anything held for human review with the "
+                "conflict summary, monitor poll status, wallet balance, and recent "
+                "outbox activity. Call this FIRST whenever the user asks 'what's "
+                "happening', 'what should I do', 'anything for me', or anything "
+                "open-ended about current state."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "launch_demo_workflow",
+            "description": (
+                "Fire the curated demo workflow (Metformin nitrosamine recall) — "
+                "fastest way to show the full 11-agent swarm end-to-end. Returns "
+                "the new workflow_id and navigates the user to it."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "trigger_new_workflow",
             "description": (
-                "Start a brand new pharmacovigilance workflow for a specific drug recall. "
-                "Use this when the user asks to monitor a new drug, re-run analysis, or "
-                "process a different recall. The 11-agent swarm fires unprompted afterwards."
+                "Start a brand new pharmacovigilance workflow for a specific drug. "
+                "Use when the user names a drug to analyze ('look at valsartan', "
+                "'check losartan') or asks to re-run."
             ),
             "parameters": {
                 "type": "object",
@@ -57,12 +86,64 @@ TOOL_SPECS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "send_pharmacist_memo",
+            "name": "replay_historical_recall",
             "description": (
-                "Dispatch the pharmacist memo for the active workflow to the pharmacy "
-                "operations team. Use when the user says 'send the memo', 'notify the "
-                "pharmacy', or 'take next steps'."
+                "Re-run Reflex against a famous historical recall (valsartan-2018, "
+                "ranitidine-2019, metformin-2020, tylenol-1982, vioxx-2004, "
+                "dabigatran-2014). Shows how the swarm would have handled it."
             ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "enum": [
+                            "valsartan-2018", "ranitidine-2019", "metformin-2020",
+                            "tylenol-1982", "vioxx-2004", "dabigatran-2014",
+                        ],
+                    },
+                },
+                "required": ["slug"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_workflow_detail",
+            "description": (
+                "Return the full state of one workflow (brief, triage, cohort, "
+                "verification, substitutes, comms, published). Use when the user "
+                "asks about a specific workflow or 'what's in the brief'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"workflow_id": {"type": "string"}},
+                "required": ["workflow_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "dispatch_all_comms",
+            "description": (
+                "Convenience: send the pharmacist memo + clinician alert + patient "
+                "letters in one shot. Use for 'take next steps', 'handle this', "
+                "'notify everyone', 'do all of it'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"workflow_id": {"type": "string"}},
+                "required": ["workflow_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_pharmacist_memo",
+            "description": "Dispatch only the pharmacist memo for this workflow.",
             "parameters": {
                 "type": "object",
                 "properties": {"workflow_id": {"type": "string"}},
@@ -74,10 +155,7 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_clinician_alert",
-            "description": (
-                "Send the clinician alert (terse, actionable) to attending physicians "
-                "on service. Use when the user says 'alert the doctors' or 'notify clinicians'."
-            ),
+            "description": "Dispatch only the clinician alert for this workflow.",
             "parameters": {
                 "type": "object",
                 "properties": {"workflow_id": {"type": "string"}},
@@ -89,10 +167,7 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_patient_letters",
-            "description": (
-                "Send the patient letter to every patient in the affected cohort. Use when "
-                "the user says 'notify the patients' or 'send the letters'."
-            ),
+            "description": "Send the patient letter to every patient in the affected cohort.",
             "parameters": {
                 "type": "object",
                 "properties": {"workflow_id": {"type": "string"}},
@@ -103,10 +178,30 @@ TOOL_SPECS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "approve_review",
+            "description": (
+                "Approve a workflow that was held for human review (verdict = "
+                "requires_human). Marks the conflict as accepted by the operator "
+                "and unlocks publish. Use when the user says 'approve it', "
+                "'override the conflict', 'I've seen it, go ahead'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string"},
+                    "note": {"type": "string", "description": "Operator rationale (optional)."},
+                },
+                "required": ["workflow_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "publish_brief",
             "description": (
-                "Publish (or republish) the workflow's brief to cited.md via Senso + git "
-                "mirror. Use when the user says 'publish' or 'push it live'."
+                "Publish (or republish) the workflow's brief to cited.md via "
+                "Senso + git mirror."
             ),
             "parameters": {
                 "type": "object",
@@ -120,10 +215,9 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "function": {
             "name": "run_premium_subbrief",
             "description": (
-                "Pay $0.50 (signed x402, or real Base Sepolia tx if wallet is funded) and "
-                "run a premium sub-brief that deep-analyzes a specific question. Use when "
-                "the user asks for a subgroup analysis, formulary alternatives, or any "
-                "question requiring deeper investigation than the main brief covers."
+                "Pay $0.50 (signed x402, or real Base Sepolia tx if wallet is funded) "
+                "and run a deeper sub-analysis on a specific question (subgroup "
+                "slice, formulary alternatives, etc)."
             ),
             "parameters": {
                 "type": "object",
@@ -138,23 +232,25 @@ TOOL_SPECS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "list_recent_recalls",
-            "description": "List the most recent workflows the swarm has processed.",
+            "name": "navigate",
+            "description": (
+                "Navigate the user's browser to a specific Reflex page. Use for "
+                "'show me the map', 'take me to the ops page', 'open the brief'."
+            ),
             "parameters": {
                 "type": "object",
-                "properties": {"limit": {"type": "integer", "default": 5}},
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "navigate_to_brief",
-            "description": "Open the published brief page in the user's browser.",
-            "parameters": {
-                "type": "object",
-                "properties": {"workflow_id": {"type": "string"}},
-                "required": ["workflow_id"],
+                "properties": {
+                    "page": {
+                        "type": "string",
+                        "enum": [
+                            "ops", "landing", "premium", "historical", "wallet",
+                            "brief", "workflow", "trace",
+                        ],
+                    },
+                    "workflow_id": {"type": "string", "description": "Required for 'brief', 'workflow', 'trace'."},
+                    "slug": {"type": "string", "description": "Required for historical-recall pages."},
+                },
+                "required": ["page"],
             },
         },
     },
@@ -162,7 +258,7 @@ TOOL_SPECS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_wallet_status",
-            "description": "Report the burner wallet address, USDC balance, and ETH balance for the user.",
+            "description": "Report the burner wallet address + USDC + ETH on Base Sepolia.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -201,12 +297,89 @@ def _log_outbox(
                     "recipient_count": recipient_count,
                     "body": body[:8000],
                     "payload_json": payload_json[:2000],
-                    "triggered_by": "voice_agent",
+                    "triggered_by": "copilot",
                 }
             ],
         )
     except Exception as e:  # noqa: BLE001
         log.warning("outbox insert failed: %s", e)
+
+
+async def _get_dashboard_state() -> dict[str, Any]:
+    workflows = list_recent(15)
+    by_status: dict[str, int] = {"running": 0, "completed": 0, "failed": 0}
+    queue: list[dict[str, Any]] = []
+    wf_brief: list[dict[str, Any]] = []
+    total_patients = 0
+    total_high_risk = 0
+    for w in workflows:
+        by_status[w.status] = by_status.get(w.status, 0) + 1
+        drug = (w.normalized.normalized_drug if w.normalized
+                else (w.payload.drug_name or "unknown"))
+        cohort = w.cohort.patient_count if w.cohort else 0
+        hr = w.cohort.high_risk_count if w.cohort else 0
+        total_patients += cohort
+        total_high_risk += hr
+        row = {
+            "workflow_id": str(w.workflow_id),
+            "drug": drug,
+            "status": w.status,
+            "cohort_patients": cohort,
+            "high_risk": hr,
+            "severity": (w.triage.severity if w.triage else None),
+            "severity_score": (w.triage.severity_score if w.triage else None),
+            "verdict": (w.verification.verdict if w.verification else None),
+            "published": bool(w.published),
+            "brief_title": (w.brief.title if w.brief else None),
+        }
+        wf_brief.append(row)
+        if w.verification and w.verification.verdict == "requires_human":
+            queue.append({
+                "workflow_id": str(w.workflow_id),
+                "drug": drug,
+                "conflict": w.verification.conflict_summary or "(unspecified)",
+                "counter_evidence_count": len(w.verification.counter_evidence or []),
+            })
+
+    wallet_info = burner.info()
+
+    # Recent outbox (best-effort).
+    recent_acts: list[dict[str, Any]] = []
+    try:
+        rows = clickhouse_client.query(
+            "SELECT channel, drug_name, recipient_count, body FROM outbox "
+            "ORDER BY created_at DESC LIMIT 5"
+        )
+        for r in rows:
+            recent_acts.append({
+                "channel": r[0],
+                "drug": r[1],
+                "recipients": r[2],
+                "preview": (r[3] or "")[:120],
+            })
+    except Exception:
+        pass
+
+    summary = (
+        f"{by_status['running']} running · {by_status['completed']} verified · "
+        f"{by_status['failed']} failed · {len(queue)} held for human review · "
+        f"{total_patients} patients on watch ({total_high_risk} high-risk)."
+    )
+
+    return {
+        "summary": summary,
+        "counts": by_status,
+        "patients_on_watch": total_patients,
+        "high_risk_patients": total_high_risk,
+        "queue_requires_human": queue,
+        "workflows": wf_brief,
+        "wallet": {
+            "address": wallet_info["address"],
+            "usdc": wallet_info["usdc_balance_micro"] / 1_000_000,
+            "eth": wallet_info["eth_balance_wei"] / 1e18,
+        },
+        "recent_activity": recent_acts,
+    }
 
 
 async def _trigger_new_workflow(args: dict[str, Any]) -> dict[str, Any]:
@@ -220,23 +393,130 @@ async def _trigger_new_workflow(args: dict[str, Any]) -> dict[str, Any]:
         source="manual",
         confidence=0.95,
     )
-    # Kick off in background — orchestrator registers within ~50ms.
     task = asyncio.create_task(orchestrate(payload))
-    # Wait briefly for the workflow_id to be assigned.
-    for _ in range(60):
+    for _ in range(80):
         await asyncio.sleep(0.05)
-        recents = list_recent(20)
-        for w in recents:
+        for w in list_recent(20):
             if w.payload is payload:
                 return {
-                    "summary": f"Workflow started for {payload.drug_name}.",
+                    "summary": f"Workflow started for {payload.drug_name}. The 11-agent swarm is running.",
                     "workflow_id": str(w.workflow_id),
                     "status": "running",
-                    "client_hint": {"navigate": f"/workflow/{w.workflow_id}"},
+                    "client_hint": {
+                        "navigate": f"/ops?wf={w.workflow_id}",
+                        "toast": f"Workflow started: {payload.drug_name}",
+                        "refresh": True,
+                    },
                 }
-    # If orchestrator hasn't registered yet, still return something useful.
     _ = task
     return {"summary": f"Workflow queued for {payload.drug_name}.", "status": "queued"}
+
+
+async def _launch_demo_workflow() -> dict[str, Any]:
+    payload = TriggerPayload(
+        drug_name="Metformin HCl ER 500mg",
+        manufacturer="Marksans Pharma",
+        reason="NDMA above acceptable intake limit",
+        recall_class="II",
+        ndc="49483-623-01",
+        lot_numbers=["XX0421A"],
+        source="demo",
+        confidence=0.99,
+    )
+    task = asyncio.create_task(orchestrate(payload))
+    for _ in range(80):
+        await asyncio.sleep(0.05)
+        for w in list_recent(20):
+            if w.payload is payload:
+                return {
+                    "summary": "Demo workflow launched (Metformin NDMA recall). Swarm is running now.",
+                    "workflow_id": str(w.workflow_id),
+                    "client_hint": {
+                        "navigate": f"/ops?wf={w.workflow_id}",
+                        "toast": "Demo workflow launched",
+                        "refresh": True,
+                    },
+                }
+    _ = task
+    return {"summary": "Demo workflow queued."}
+
+
+async def _replay_historical(slug: str) -> dict[str, Any]:
+    rec = historical_mod.get_recall(slug)
+    if not rec:
+        return {"summary": f"Unknown historical slug: {slug}.", "error": "unknown_slug"}
+    payload = TriggerPayload(
+        drug_name=rec["drug"],
+        manufacturer=None,
+        reason=rec.get("story", "")[:280],
+        recall_class=None,
+        source=f"historical:{slug}",
+        confidence=0.99,
+    )
+    task = asyncio.create_task(orchestrate(payload))
+    for _ in range(80):
+        await asyncio.sleep(0.05)
+        for w in list_recent(20):
+            if w.payload is payload:
+                return {
+                    "summary": f"Replaying {rec['drug']} ({rec['year']}). Running the swarm against the historical case.",
+                    "workflow_id": str(w.workflow_id),
+                    "slug": slug,
+                    "client_hint": {
+                        "navigate": f"/ops?wf={w.workflow_id}",
+                        "toast": f"Replaying {rec['drug']} {rec['year']}",
+                        "refresh": True,
+                    },
+                }
+    _ = task
+    return {"summary": f"Replay queued for {rec['drug']}."}
+
+
+def _get_workflow_detail(workflow_id: str) -> dict[str, Any]:
+    try:
+        wid = UUID(workflow_id)
+    except Exception:
+        return {"summary": "Invalid workflow id.", "error": "bad_uuid"}
+    w = get_result(wid)
+    if not w:
+        return {"summary": "No such workflow.", "error": "not_found"}
+    out: dict[str, Any] = {
+        "summary": f"Status {w.status}.",
+        "status": w.status,
+        "drug": (w.normalized.normalized_drug if w.normalized
+                 else (w.payload.drug_name or "?")),
+    }
+    if w.brief:
+        out["brief"] = {
+            "title": w.brief.title,
+            "summary": w.brief.summary,
+            "findings": w.brief.findings,
+            "severity_score": w.brief.severity_score,
+        }
+    if w.triage:
+        out["triage"] = {
+            "severity": w.triage.severity,
+            "score": w.triage.severity_score,
+            "urgency": w.triage.urgency,
+        }
+    if w.cohort:
+        out["cohort"] = {
+            "patient_count": w.cohort.patient_count,
+            "high_risk_count": w.cohort.high_risk_count,
+        }
+    if w.verification:
+        out["verification"] = {
+            "verdict": w.verification.verdict,
+            "conflict_summary": w.verification.conflict_summary,
+        }
+    if w.substitutes and w.substitutes.candidates:
+        out["substitutes"] = [
+            {"drug": c.drug_name, "target_similarity": c.target_similarity}
+            for c in w.substitutes.candidates[:5]
+        ]
+    if w.published:
+        out["published_url"] = w.published.cited_md_url
+    return out
 
 
 async def _send_comm(workflow_id: str, channel: str) -> dict[str, Any]:
@@ -264,12 +544,70 @@ async def _send_comm(workflow_id: str, channel: str) -> dict[str, Any]:
     else:
         return {"summary": "Unknown channel.", "error": "bad_channel"}
     _log_outbox(wid, channel, body, recipient_count=len(targets), payload_json=str(targets))
+    pretty = channel.replace("_", " ")
     return {
-        "summary": f"Sent {channel.replace('_', ' ')} to {len(targets)} recipients.",
+        "summary": f"Sent {pretty} to {len(targets)} recipients.",
         "channel": channel,
         "recipients": targets,
         "body_preview": body[:200] + ("…" if len(body) > 200 else ""),
-        "client_hint": {"toast": f"{channel.replace('_', ' ').title()} dispatched ({len(targets)} recipients)"},
+        "client_hint": {"toast": f"{pretty.title()} dispatched ({len(targets)})"},
+    }
+
+
+async def _dispatch_all_comms(workflow_id: str) -> dict[str, Any]:
+    results = []
+    for channel in ("pharmacist_memo", "clinician_alert", "patient_letter"):
+        r = await _send_comm(workflow_id, channel)
+        results.append({channel: r})
+        if r.get("error"):
+            return {"summary": f"Stopped at {channel}: {r['summary']}", "partial": results}
+    total = sum(
+        len(list(d.values())[0].get("recipients") or [])
+        for d in results
+    )
+    return {
+        "summary": f"Sent pharmacist memo, clinician alert, and patient letters — {total} total recipients.",
+        "results": results,
+        "client_hint": {"toast": f"All comms dispatched ({total} recipients)", "refresh": True},
+    }
+
+
+async def _approve_review(workflow_id: str, note: str = "") -> dict[str, Any]:
+    try:
+        wid = UUID(workflow_id)
+    except Exception:
+        return {"summary": "Invalid workflow id.", "error": "bad_uuid"}
+    w = get_result(wid)
+    if not w:
+        return {"summary": "No such workflow.", "error": "not_found"}
+    if not w.verification or w.verification.verdict != "requires_human":
+        return {
+            "summary": "This workflow does not need human review.",
+            "current_verdict": (w.verification.verdict if w.verification else None),
+        }
+    w.verification.verdict = "approved_by_operator"
+    if note:
+        w.verification.conflict_summary = (
+            (w.verification.conflict_summary or "") + f"\nOperator: {note}"
+        )
+    _log_outbox(wid, "approve_review", note or "approved", recipient_count=1)
+    # If brief is ready and not yet published, publish now.
+    if w.brief and w.audit and not w.published:
+        pub = await publisher_agent.run(
+            wid, w.brief, w.audit,
+            cohort_count=w.cohort.patient_count if w.cohort else 0,
+            cohort_high_risk=w.cohort.high_risk_count if w.cohort else 0,
+            agents_verified=w.audit.citations_verified if w.audit else 0,
+        )
+        w.published = pub
+        return {
+            "summary": f"Approved and published — {pub.cited_md_url}",
+            "published_url": pub.cited_md_url,
+            "client_hint": {"navigate": f"/brief/{workflow_id}", "toast": "Approved & published", "refresh": True},
+        }
+    return {
+        "summary": "Approved. Brief will publish once the swarm finishes drafting.",
+        "client_hint": {"toast": "Review approved", "refresh": True},
     }
 
 
@@ -320,7 +658,6 @@ async def _run_premium_subbrief(workflow_id: str, question: str) -> dict[str, An
                 for c in w.substitutes.candidates[:3]
             ) + "\n"
 
-    # Settle payment: prefer on-chain if burner funded; else mint JWT.
     settlement: dict[str, Any] | None = None
     try:
         info = burner.info()
@@ -373,34 +710,21 @@ async def _run_premium_subbrief(workflow_id: str, question: str) -> dict[str, An
     return out
 
 
-def _list_recent_recalls(limit: int = 5) -> dict[str, Any]:
-    items = list_recent(limit)
-    summary_rows = []
-    for w in items:
-        drug = (w.normalized.normalized_drug if w.normalized else (w.payload.drug_name or "?"))
-        summary_rows.append(
-            {
-                "workflow_id": str(w.workflow_id),
-                "drug": drug,
-                "status": w.status,
-                "source": w.payload.source,
-                "cohort": w.cohort.patient_count if w.cohort else 0,
-            }
-        )
-    one_line = "; ".join(
-        f"{r['drug']} ({r['status']}, {r['cohort']} patients)" for r in summary_rows
-    )
-    return {
-        "summary": f"{len(summary_rows)} recent: {one_line}" if summary_rows else "No workflows yet.",
-        "workflows": summary_rows,
+def _navigate(page: str, workflow_id: str | None = None, slug: str | None = None) -> dict[str, Any]:
+    mapping = {
+        "ops": "/ops",
+        "landing": "/",
+        "premium": "/premium",
+        "historical": f"/historical/{slug}" if slug else "/historical",
+        "wallet": "/wallet",
+        "brief": f"/brief/{workflow_id}" if workflow_id else None,
+        "workflow": f"/workflow/{workflow_id}" if workflow_id else None,
+        "trace": f"/trace/{workflow_id}" if workflow_id else None,
     }
-
-
-def _navigate_to_brief(workflow_id: str) -> dict[str, Any]:
-    return {
-        "summary": "Opening the brief.",
-        "client_hint": {"navigate": f"/brief/{workflow_id}"},
-    }
+    dest = mapping.get(page)
+    if not dest:
+        return {"summary": f"Cannot navigate to {page} without the required id.", "error": "missing_arg"}
+    return {"summary": f"Opening {dest}.", "client_hint": {"navigate": dest}}
 
 
 def _get_wallet_status() -> dict[str, Any]:
@@ -423,22 +747,32 @@ def _get_wallet_status() -> dict[str, Any]:
 
 async def execute(name: str, args: dict[str, Any]) -> dict[str, Any]:
     try:
+        if name == "get_dashboard_state":
+            return await _get_dashboard_state()
+        if name == "launch_demo_workflow":
+            return await _launch_demo_workflow()
         if name == "trigger_new_workflow":
             return await _trigger_new_workflow(args)
+        if name == "replay_historical_recall":
+            return await _replay_historical(args["slug"])
+        if name == "get_workflow_detail":
+            return _get_workflow_detail(args["workflow_id"])
+        if name == "dispatch_all_comms":
+            return await _dispatch_all_comms(args["workflow_id"])
         if name == "send_pharmacist_memo":
             return await _send_comm(args["workflow_id"], "pharmacist_memo")
         if name == "send_clinician_alert":
             return await _send_comm(args["workflow_id"], "clinician_alert")
         if name == "send_patient_letters":
             return await _send_comm(args["workflow_id"], "patient_letter")
+        if name == "approve_review":
+            return await _approve_review(args["workflow_id"], args.get("note", ""))
         if name == "publish_brief":
             return await _publish_brief(args["workflow_id"])
         if name == "run_premium_subbrief":
             return await _run_premium_subbrief(args["workflow_id"], args.get("question", ""))
-        if name == "list_recent_recalls":
-            return _list_recent_recalls(int(args.get("limit") or 5))
-        if name == "navigate_to_brief":
-            return _navigate_to_brief(args["workflow_id"])
+        if name == "navigate":
+            return _navigate(args["page"], args.get("workflow_id"), args.get("slug"))
         if name == "get_wallet_status":
             return _get_wallet_status()
         return {"summary": f"Unknown tool: {name}", "error": "unknown_tool"}
