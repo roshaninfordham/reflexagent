@@ -1,18 +1,18 @@
 # Reflex Safety Brief: Tpn Bag (Patient Specific)
 
-**Published:** 2026-05-25T02:20:52Z
-**Workflow ID:** `526e2ec0-8ccd-4f3c-9963-d70151e98a09`
-**Severity Score:** 6.0 / 10
+**Published:** 2026-05-25T17:58:36Z
+**Workflow ID:** `26129697-5b1e-4ec7-a39a-062f33548577`
+**Severity Score:** 5.5 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
 ## Summary
-The FDA has classified this recall as Class II. Central Admixture Pharmacy Services, Inc (CAPS) initiated the recall due to potential contamination risk. Verification found no evidence to support or refute the recall. 
+This recall is classified as a FDA Class II recall. The recall was initiated by Central Admixture Pharmacy Services, Inc (CAPS) due to potential contamination risk. Verification found no evidence to support or refute the recall. 
 
 ## Key Findings
 - No evidence of contamination was found in the available data.
-- The manufacturer, Central Admixture Pharmacy Services, Inc (CAPS), has not provided information on the affected lot numbers.
-- No patients are reported to be affected by this recall.
-- The high-risk patient population is reported as 0.
+- The manufacturer, Central Admixture Pharmacy Services, Inc (CAPS), has not provided lot numbers of affected products.
+- No affected patients have been reported in the available data.
+- No high-risk patients have been identified in the available data.
 
 ## Counter-Evidence Considered
 No refuting evidence found across the 0 verification searches.
@@ -22,7 +22,7 @@ No refuting evidence found across the 0 verification searches.
 - High-risk (>75 or CKD stage 3+): **0**
 
 ## Recommendation
-Pharmacy Directors should quarantine any potentially affected Tpn Bag (Patient Specific) products from Central Admixture Pharmacy Services, Inc (CAPS) and notify relevant personnel. An audit trail should be maintained to track the recall process.
+Pharmacy Directors should quarantine any Tpn Bag (Patient Specific) products from Central Admixture Pharmacy Services, Inc (CAPS) until further notice. Notification should be made to all relevant personnel and an audit trail should be maintained. 
 
 ## Citations
 
