@@ -1,18 +1,18 @@
 # Reflex Safety Brief: Tpn Bag (Patient Specific)
 
-**Published:** 2026-05-24T14:57:46Z
-**Workflow ID:** `69c0bc8d-df5e-4e94-b634-29b1328e77eb`
+**Published:** 2026-05-25T02:20:52Z
+**Workflow ID:** `526e2ec0-8ccd-4f3c-9963-d70151e98a09`
 **Severity Score:** 6.0 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
 ## Summary
-The FDA has initiated a Class II recall of Tpn Bag (Patient Specific) due to potential contamination risk. Central Admixture Pharmacy Services, Inc (CAPS) Los Angeles is the manufacturer. Verification found no evidence to support or refute the recall.
+The FDA has classified this recall as Class II. Central Admixture Pharmacy Services, Inc (CAPS) initiated the recall due to potential contamination risk. Verification found no evidence to support or refute the recall. 
 
 ## Key Findings
 - No evidence of contamination was found in the available data.
-- The manufacturer, Central Admixture Pharmacy Services, Inc (CAPS) Los Angeles, has not reported any affected lot numbers.
+- The manufacturer, Central Admixture Pharmacy Services, Inc (CAPS), has not provided information on the affected lot numbers.
 - No patients are reported to be affected by this recall.
-- No high-risk patients are reported to be affected by this recall.
+- The high-risk patient population is reported as 0.
 
 ## Counter-Evidence Considered
 No refuting evidence found across the 0 verification searches.
@@ -22,7 +22,7 @@ No refuting evidence found across the 0 verification searches.
 - High-risk (>75 or CKD stage 3+): **0**
 
 ## Recommendation
-Pharmacy Directors should quarantine any potentially affected Tpn Bag (Patient Specific) products and notify relevant personnel. An audit trail should be maintained to track the recall process.
+Pharmacy Directors should quarantine any potentially affected Tpn Bag (Patient Specific) products from Central Admixture Pharmacy Services, Inc (CAPS) and notify relevant personnel. An audit trail should be maintained to track the recall process.
 
 ## Citations
 
