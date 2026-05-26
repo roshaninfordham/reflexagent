@@ -1,18 +1,18 @@
 # Reflex Safety Brief: Glycerin
 
-**Published:** 2026-05-26T06:07:25Z
-**Workflow ID:** `bba217d3-694d-400c-bef0-535842ffbdf1`
-**Severity Score:** 5.0 / 10
+**Published:** 2026-05-26T15:11:46Z
+**Workflow ID:** `85e2d5aa-1a42-4424-99c5-6fa0db69c151`
+**Severity Score:** 5.5 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
 ## Summary
-The FDA has initiated a Class II recall of Glycerin manufactured by Oasis Medical, Inc. due to potential contamination. Verification found no evidence to support or refute this claim. The recall affects an unknown number of patients. Further investigation is needed to determine the extent of the contamination.
+This recall is classified as a Class II recall. The FDA initiated the recall due to potential contamination. Verification found no evidence to refute the recall.
 
 ## Key Findings
-- No evidence of contamination has been found in the available data.
-- The manufacturer, Oasis Medical, Inc., has not provided any information on the affected lot numbers.
-- No patients have been reported to be affected by the potential contamination.
-- High-risk patients have not been identified in this recall.
+- No evidence of patient harm has been reported, with 0 affected patients and 0 high-risk patients.
+- The recall affects products manufactured by Oasis Medical, Inc., but specific lot numbers are not available.
+- The manufacturer has not provided information on the scope of the recall or the number of affected products.
+- No evidence is available to support or refute the recall, as the evidence pool is empty.
 
 ## Counter-Evidence Considered
 No refuting evidence found across the 0 verification searches.
@@ -22,7 +22,7 @@ No refuting evidence found across the 0 verification searches.
 - High-risk (>75 or CKD stage 3+): **0**
 
 ## Recommendation
-Pharmacy Directors should quarantine any Glycerin products from Oasis Medical, Inc. until further notice. Notification should be made to all relevant personnel, and an audit trail should be maintained to track the recall process.
+Pharmacy Directors should quarantine any Glycerin products from Oasis Medical, Inc. and notify relevant personnel. An audit trail should be maintained to track the recall process. Further guidance will be provided as more information becomes available.
 
 ## Citations
 
