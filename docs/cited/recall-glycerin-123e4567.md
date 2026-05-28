@@ -1,18 +1,18 @@
 # Reflex Safety Brief: Glycerin
 
-**Published:** 2026-05-25T17:58:45Z
-**Workflow ID:** `ed121652-2899-4018-9e1c-5d892904c16a`
+**Published:** 2026-05-28T00:01:57Z
+**Workflow ID:** `80c33dc0-521c-4372-9260-0b913c3b5b88`
 **Severity Score:** 5.5 / 10
 **Verification:** 0 of 9 verification agents confirmed; counter-evidence: no.
 
 ## Summary
-The FDA has initiated a Class II recall of Glycerin manufactured by Oasis Medical, Inc. due to potential contamination. Verification found no evidence to support or refute this claim. The recall affects an unknown number of patients. 
+The FDA has initiated a Class II recall of Glycerin manufactured by Oasis Medical, Inc. due to potential contamination risks. Verification found no evidence to support or refute this claim. The recall affects an unknown number of patients. 
 
 ## Key Findings
 - No evidence of contamination has been found in the available data.
-- The manufacturer, Oasis Medical, Inc., has not released a statement regarding the recall.
-- No lot numbers have been specified as part of the recall.
-- No patient data is available to determine the affected population.
+- The manufacturer, Oasis Medical, Inc., has not provided any information on the affected lot numbers.
+- No demographic information is available on the affected population.
+- The Cohort agent's count of affected patients is 0.
 
 ## Counter-Evidence Considered
 No refuting evidence found across the 0 verification searches.
@@ -22,7 +22,7 @@ No refuting evidence found across the 0 verification searches.
 - High-risk (>75 or CKD stage 3+): **0**
 
 ## Recommendation
-Pharmacy Directors should quarantine all Glycerin products from Oasis Medical, Inc. until further notice and notify all relevant personnel. An audit trail should be maintained to track the recall process.
+Pharmacy Directors should quarantine any Glycerin products from Oasis Medical, Inc. and notify their staff of the potential contamination risk. An audit trail should be maintained to track the recall process.
 
 ## Citations
 
